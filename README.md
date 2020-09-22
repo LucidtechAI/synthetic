@@ -73,7 +73,7 @@ be used to decompress object streams in PDF files so that you can edit the PDF i
 $ qpdf --stream-data=uncompress input.pdf output.pdf
 ```
 
-When you open output.pdf in a text editor, you will see lines like this:
+When you open output.pdf in a [text editor](https://www.vim.org), you will see lines like this:
 
 ``` PDF
 ...
@@ -83,7 +83,7 @@ When you open output.pdf in a text editor, you will see lines like this:
 ...
 ```
 
-_synth.py_ assumes that the labels in _example.yaml_ are correspond to variables in the uncompressed PDF. A variable is denoted as `__(variable_name)__`. For example:
+_synth.py_ assumes that the labels in _example.yaml_ correspond to variables in the uncompressed PDF. A variable is denoted as `__(variable_name)__`. For example:
 
 ``` PDF
 ...
