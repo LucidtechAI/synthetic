@@ -58,12 +58,9 @@ example.yaml:
 path: path/to/document_templated.pdf
 dest: path/to/document_synthetic.pdf
 labels:
-  first_label:
-    text: '431.23'
-  second_label:
-    text: 'foobar'
-    boxes:
-      - ...
+  first_label: '431.23'
+  second_label: 'foobar'
+  ...
 ```
 
 The second part consists of a PDF with uncompressed object streams. [QPDF](https://github.com/qpdf/qpdf) can
