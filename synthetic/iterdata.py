@@ -15,7 +15,7 @@ from filetype.types import Type as FileType
 from .core.synthesizer import Synthesizer
 
 
-logger = logging.getLogger('synthetic')
+logger = logging.getLogger(__name__)
 
 
 def is_json(path):

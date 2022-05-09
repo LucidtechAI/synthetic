@@ -57,6 +57,7 @@ def create_parser():
 def set_verbosity(verbose):
     verbosity_levels = [logging.WARNING, logging.INFO, logging.DEBUG]
     verbosity = verbosity_levels[min(verbose, len(verbosity_levels) - 1)]
+    logging.basicConfig()
     logging.getLogger().setLevel(verbosity)
     logging.getLogger('synthetic').setLevel(verbosity)
 

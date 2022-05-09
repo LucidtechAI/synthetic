@@ -16,7 +16,7 @@ from .synthesizer import PdfSynthesizer
 from .utils import Font
 
 
-logger = logging.getLogger('synthetic')
+logger = logging.getLogger(__name__)
 
 
 class TextBlock:
@@ -212,7 +212,7 @@ def parse_pdf(
     dst_dir: Path,
     tmp_dir: Path
 ):
-    logger.info(name, pdf_file, json_file)
+    logger.info(f'{name}: {pdf_file} {json_file}')
     status = f'Error when synthesizing {name}'
 
     try:
