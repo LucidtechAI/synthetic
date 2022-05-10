@@ -50,14 +50,19 @@ jobs:
         id: get_version
         run: |
           echo "::set-output name=version::$(cat synthetic/__version__.py | grep version | grep -oP '(\d+.\d+.\d+)')"
-      - name: Build and push
+      - name: Build and push version
         uses: docker/build-push-action@v2
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags:
-            - lucidtechai/synthetic:${{ steps.get_version.outputs.version }}
-            - lucidtechai/synthetic:latest
+          tags: lucidtechai/synthetic:${{ steps.get_version.outputs.version }}
+      - name: Build and push latest
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: lucidtechai/synthetic:latest
 
 
