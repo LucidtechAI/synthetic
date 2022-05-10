@@ -12,6 +12,20 @@ $ pip install lucidtech-synthetic
 
 ## Usage
 
+### Docker
+
+We recommend disabling networking and setting `/path/to/src_dir` to read-only as shown below:
+
+```bash
+docker run --network none -v /path/to/src_dir:/root/src_dir:ro -v /path/to/dst_dir:/root/dst_dir -it lucidtechai/synthetic pdf /root/src_dir /root/dst_dir
+```
+
+### CLI
+
+```bash
+synthetic pdf /path/to/src_dir /path/to/dst_dir
+```
+
 `/path/to/src_dir` is the input directory and should contain your PDFs and JSON ground truths
 `/path/to/dst_dir` is the output directory where synthesized PDFs and JSON ground truths will be written to
 
@@ -35,20 +49,6 @@ The output directory will follow the same layout but with modified PDFs and JSON
 ├── b.json
 ├── c.pdf
 └── c.json
-```
-
-### Docker
-
-We recommend disabling networking and setting `/path/to/src_dir` to read-only as shown below:
-
-```bash
-docker run --network none -v /path/to/src_dir:/root/src_dir:ro -v /path/to/dst_dir:/root/dst_dir -it lucidtechai/synthetic pdf /root/src_dir /root/dst_dir
-```
-
-### CLI
-
-```bash
-synthetic pdf /path/to/src_dir /path/to/dst_dir
 ```
 
 All methods support the `--help` flag which will provide information on the purpose of the method, 

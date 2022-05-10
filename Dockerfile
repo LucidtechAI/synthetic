@@ -6,6 +6,6 @@ RUN apt-get update && apt install -y --no-install-recommends \
 WORKDIR synthetic/
 COPY . .
 
-RUN pip install -e .
+RUN pip install .
 
 ENTRYPOINT [ "synthetic" ]
