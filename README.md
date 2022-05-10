@@ -12,8 +12,8 @@ $ pip install lucidtech-synthetic
 
 ## Usage
 
-`/path/to/src_dir` should contain your PDFs and JSON ground truths
-`/path/to/dst_dir` is the directory you want
+`/path/to/src_dir` is the input directory and should contain your PDFs and JSON ground truths
+`/path/to/dst_dir` is the output directory where synthesized PDFs and JSON ground truths will be written to
 
 Here is an example of the directory layout for `/path/to/src_dir`:
 ```
