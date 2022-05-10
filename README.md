@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-This code does not guarantee that PDFs will be successfully anonymized/synthesized. Use at own your risk.
+This code does not guarantee that PDFs will be successfully anonymized/synthesized. Use at your own risk.
 
 ## Installation
 
