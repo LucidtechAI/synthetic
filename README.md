@@ -2,7 +2,7 @@
 
 ## Disclaimer
 
-This code is experimental, and is not recommended for production use. The code is intended solely for educational purposes.
+This code does not guarantee that PDFs will be successfully anonymized/synthesized. Use at own your risk.
 
 ## Installation
 
