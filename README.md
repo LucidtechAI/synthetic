@@ -1,101 +1,66 @@
-# Introduction
+# PDF anonymizer/synthesizer for Cradl
 
-This script generates synthetic training data from pre-defined templates.
+## Disclaimer
 
-**Disclaimer: This code is experimental, and is not recommended for production use. The code is intended solely for educational purposes.**
+This code does not guarantee that PDFs will be successfully anonymized/synthesized. Use at your own risk.
 
-# Installation
-``` bash
-$ pip install -r requirements.txt
-```
-
-# Image synthetization
-With image synthetization, documents are synthetized by drawing on top of an images.
-Consequently, image synthetization can be effective on a broad range of document types.
-Drawbacks with image synthetization is that image artifacts and font recognition issues
-may reduce the quality of the synthetic date.
-
-## Template definition
-The template structure for image synthetization is defined below:
-
-example.yaml:
-``` yaml
-path: path/to/image.jpg
-dest: path/to/image_synthetic.jpg
-labels:
-  first_label:
-    text: '431.23'
-    boxes:
-      - xmin: 0.609375
-        ymin: 0.698546
-        xmax: 0.916666
-        ymax: 0.740140
-  second_label:
-    text: 'foobar'
-    boxes:
-      - ...
-```
-
-The bounding boxes are denoted with relative coordinates.
-
-## Usage
-Example usage:
-``` bash
-$ python synth.py image example.yaml /usr/share/fonts/TTF --font-size-range 40:60
-```
-
-The script generates a synthetic version of the source image where areas denoted by the bounding boxes have been substituted with the corresponding text.
-
-# PDF synthetization
-PDF synthetization eliminates some of the challenges with image synthetization. In particular, font detection
-and image artifacts is less problematic.
-
-## Template definition
-The template definition for image synthetization consists of two parts. The first part is defined below:
-
-example.yaml:
-``` yaml
-path: path/to/document_templated.pdf
-dest: path/to/document_synthetic.pdf
-labels:
-  first_label: '431.23'
-  second_label: 'foobar'
-  ...
-```
-
-The second part consists of a PDF with uncompressed object streams. [QPDF](https://github.com/qpdf/qpdf) can
-be used to decompress object streams in PDF files so that you can edit the PDF in your favorite text editor:
+## Installation
 
 ```bash
-$ qpdf --stream-data=uncompress input.pdf output.pdf
-```
-
-When you open output.pdf in a [text editor](https://www.vim.org), you will see lines like this:
-
-``` PDF
-...
-82.815972 0 Td
-(Some fancy text here)Tj
-/F1 9 Tf
-...
-```
-
-_synth.py_ assumes that the labels in _example.yaml_ correspond to variables in the uncompressed PDF. A variable is denoted as `__(variable_name)__`. For example:
-
-``` PDF
-...
-82.815972 0 Td
-(Some __(first_label)__)Tj
-/F1 9 Tf
-...
+$ pip install lucidtech-synthetic
 ```
 
 ## Usage
-When all variables have been added to the PDF, you are ready to synthesize data:
 
-```bash
-$ python synth.py pdf example.yaml
+`/path/to/src_dir` is the input directory and should contain your PDFs and JSON ground truths
+`/path/to/dst_dir` is the output directory where synthesized PDFs and JSON ground truths will be written to
+
+Here is an example of the directory layout for `/path/to/src_dir`:
+```
+/path/to/src_dir
+├── a.pdf
+├── a.json
+├── b.pdf
+├── b.json
+├── c.pdf
+└── c.json
 ```
 
-# Examples
-See the examples directory.
+The output directory will follow the same layout but with modified PDFs and JSON ground truths:
+```
+/path/to/dst_dir
+├── a.pdf
+├── a.json
+├── b.pdf
+├── b.json
+├── c.pdf
+└── c.json
+```
+
+### Docker
+
+We recommend disabling networking and setting `/path/to/src_dir` to read-only as shown below:
+
+```bash
+docker run --network none -v /path/to/src_dir:/root/src_dir:ro -v /path/to/dst_dir:/root/dst_dir -it lucidtechai/synthetic pdf /root/src_dir /root/dst_dir
+```
+
+### CLI
+
+```bash
+synthetic pdf /path/to/src_dir /path/to/dst_dir
+```
+
+All methods support the `--help` flag which will provide information on the purpose of the method, 
+and what arguments could be added.
+
+```bash
+$ synthetic --help
+```
+
+## Known Issues
+
+### PDF Synthesizer
+
+- Does not synthesize images
+- Replaced strings are never hexadecimal encoded

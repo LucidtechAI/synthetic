@@ -1,0 +1,24 @@
+name: Check that version is updated
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  CheckVersion:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Fetch repo
+        run: git fetch
+
+      - name: Version check
+        run: |
+          if [ -z $(git diff origin/master HEAD -- synthetic/__version__.py | grep version )]
+          then
+            echo "You should probably update version number"
+            exit 1
+          fi
