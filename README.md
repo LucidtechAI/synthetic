@@ -26,6 +26,17 @@ Here is an example of the directory layout for `/path/to/src_dir`:
 └── c.json
 ```
 
+The output directory will follow the same layout but with modified PDFs and JSON ground truths:
+```
+/path/to/dst_dir
+├── a.pdf
+├── a.json
+├── b.pdf
+├── b.json
+├── c.pdf
+└── c.json
+```
+
 ### Docker
 
 We recommend disabling networking and setting `/path/to/src_dir` to read-only as shown below:
