@@ -29,6 +29,8 @@ setup(
     url=about['__url__'],
     packages=[
         'synthetic',
+        'synthetic.core',
+        'synthetic.pdf',
     ],
     entry_points={
         'console_scripts': [
