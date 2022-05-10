@@ -49,7 +49,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          echo "::set-output name=version::$(cat synthetic/__version__.py | grep version | grep -oP '(\\d+.\\d+.\\d+)')"
+          echo "::set-output name=version::$(cat synthetic/__version__.py | grep version | grep -oP '(\d+.\d+.\d+)')"
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
