@@ -25,10 +25,10 @@ class BasicSynthesizer(PdfSynthesizer):
         self,
         ground_truth: list[dict],
         font_map: dict[str, Font],
-        characters_to_substitute=string.ascii_letters,
     ):
         super().__init__(ground_truth, font_map)
-        self.substitution_map = self._create_substitution_map(characters_to_substitute)
+        characters_groups = [font.available_characters() for font in self.font_map.values()]
+        self.substitution_map = self._create_substitution_map(characters_groups, string.ascii_letters)
 
     def modify_text(self, text: str, **kwargs):
         return self.substitute(text)
@@ -42,18 +42,18 @@ class BasicSynthesizer(PdfSynthesizer):
     def substitute(self, text):
         return ''.join(self.substitution_map.get(c, c) for c in text)
 
-    def _create_substitution_map(self, characters_to_substitute):
-        def remap(font):
+    def _create_substitution_map(self, character_groups, characters_to_substitute):
+        def remap(character_group):
             if characters_to_substitute:
-                return set(characters_to_substitute) & set(font.available_characters())
+                return set(characters_to_substitute) & set(character_group)
             else:
-                return set(font.available_characters())
+                return set(character_group)
 
-        def not_remap(font):
-            return set(font.available_characters()) - remap(font)
+        def not_remap(character_group):
+            return set(character_group) - remap(character_group)
 
-        characters_to_remap = list(map(remap, self.font_map.values()))
-        characters_to_not_remap = reduce(lambda a, b: a | b, map(not_remap, self.font_map.values()))
+        characters_to_remap = [remap(character_group) for character_group in character_groups]
+        characters_to_not_remap = reduce(lambda a, b: a | b, map(not_remap, character_groups))
         number_of_fonts = len(self.font_map)
         substitution_map = {c: c for c in characters_to_not_remap}
 
