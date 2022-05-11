@@ -73,7 +73,7 @@ synthetic pdf /path/to/src_dir /path/to/dst_dir --synthesizer-class examples.exc
 docker run --network none -v /path/to/synthesizer:/root/synthesizer -v /path/to/src_dir:/root/src_dir:ro -v /path/to/dst_dir:/root/dst_dir -it lucidtechai/synthetic pdf /root/src_dir /root/dst_dir --synthesizer-class mypythonfile.ExcludeWordsSynthesizer
 ```
 
-Note that the python module must be mounted into the docker container to `/root/synthesizer` for it to work. In the above example we assume a directory structure of your customer synthesizer to be like below.
+Note that the python module must be mounted into the docker container to `/root/synthesizer` for it to work. In the above example we assume a directory structure of your custom synthesizer to be like below.
 
 ```
 /path/to/synthesizer
