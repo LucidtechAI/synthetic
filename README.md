@@ -10,7 +10,7 @@ This code does not guarantee that PDFs will be successfully anonymized/synthesiz
 $ pip install lucidtech-synthetic
 ```
 
-## Usage
+## Basic Usage
 
 ### Docker
 
@@ -50,6 +50,43 @@ The output directory will follow the same layout but with modified PDFs and JSON
 ├── c.pdf
 └── c.json
 ```
+
+## Using a custom Synthesizer
+
+### CLI
+
+```bash
+synthetic pdf /path/to/src_dir /path/to/dst_dir --synthesizer-class path.to.python.Class
+```
+
+Make sure that parent directory of `path.to.python.Class` is in your `PYTHONPATH`
+
+Example using one of the example Synthesizers in `examples` directory
+
+```bash
+synthetic pdf /path/to/src_dir /path/to/dst_dir --synthesizer-class examples.exclude-words.synthesizer.ExcludeWordsSynthesizer
+```
+
+### Docker
+
+```bash
+docker run --network none -v /path/to/synthesizer:/root/synthesizer -v /path/to/src_dir:/root/src_dir:ro -v /path/to/dst_dir:/root/dst_dir -it lucidtechai/synthetic pdf /root/src_dir /root/dst_dir --synthesizer-class mypythonfile.ExcludeWordsSynthesizer
+```
+
+Note that the python module must be mounted into the docker container to `/root/synthesizer` for it to work. In the above example we assume a directory structure of your custom synthesizer to be like below.
+
+```
+/path/to/synthesizer
+└── mypythonfile.py
+```
+
+Example using one of the example Synthesizers in `examples` directory. The `examples` directory should already exist in the image so that we don't need to mount anything additional.
+
+```bash
+docker run --network none -v /path/to/src_dir:/root/src_dir:ro -v /path/to/dst_dir:/root/dst_dir -it lucidtechai/synthetic pdf /root/src_dir /root/dst_dir --synthesizer-class examples.exclude-words.synthesizer.ExcludeWordsSynthesizer
+```
+
+## Help
 
 All methods support the `--help` flag which will provide information on the purpose of the method, 
 and what arguments could be added.

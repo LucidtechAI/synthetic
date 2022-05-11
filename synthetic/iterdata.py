@@ -74,7 +74,12 @@ def parse_documents(
         documents = iter_documents(src_dir, accepted_document_types)
 
     with tempfile.TemporaryDirectory() as tmp_dir, ProcessPoolExecutor(max_workers=num_processes) as executor:
-        _parse_fn = partial(parse_fn, synthesizer_class=synthesizer_class, dst_dir=dst_dir, tmp_dir=Path(tmp_dir))
+        _parse_fn = partial(
+            parse_fn,
+            synthesizer_class=synthesizer_class,
+            dst_dir=dst_dir,
+            tmp_dir=Path(tmp_dir),
+        )
         futures = []
 
         for name, document_path, ground_truth_path in documents:
