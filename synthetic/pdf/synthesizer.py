@@ -1,9 +1,9 @@
 import abc
 import copy
-import itertools
 import random
 import string
 from functools import reduce
+from itertools import chain, combinations
 
 from ..core.ground_truth import parse_labels_in_ground_truth
 from ..core.synthesizer import Synthesizer
@@ -27,44 +27,61 @@ class BasicSynthesizer(PdfSynthesizer):
         font_map: dict[str, Font],
     ):
         super().__init__(ground_truth, font_map)
-        characters_groups = [font.available_characters() for font in self.font_map.values()]
-        self.substitution_map = self._create_substitution_map(characters_groups, string.ascii_letters)
+        available_character_sets = [set(font.available_characters()) for font in self.font_map.values()]
+        substitution_character_sets = [set(string.digits), set(string.ascii_lowercase), set(string.ascii_uppercase)]
+        self.substitution_map = self._create_substitution_map(available_character_sets, substitution_character_sets)
 
     def modify_text(self, text: str, **kwargs):
         return self.substitute(text)
 
     def create_new_ground_truth(self):
-        for label, value, match in parse_labels_in_ground_truth(copy.deepcopy(self.ground_truth)):
+        ground_truth = copy.deepcopy(self.ground_truth)
+        for label, value, match in parse_labels_in_ground_truth(ground_truth):
             if isinstance(value, str):
                 match.context.value.update({'value': self.substitute(value)})
-        return self.ground_truth
+            elif isinstance(value, float) or isinstance(value, int):
+                match.context.value.update({'value': self.substitute(str(value))})
+        return ground_truth
 
     def substitute(self, text):
         return ''.join(self.substitution_map.get(c, c) for c in text)
 
-    def _create_substitution_map(self, character_groups, characters_to_substitute):
-        def remap(character_group):
-            if characters_to_substitute:
-                return set(characters_to_substitute) & set(character_group)
-            else:
-                return set(character_group)
+    def _create_substitution_map(self, available_character_sets, substitution_character_sets):
+        if len(substitution_character_sets) > 1:
+            assert all([a.isdisjoint(b) for a, b in combinations(substitution_character_sets, 2)])
 
-        def not_remap(character_group):
-            return set(character_group) - remap(character_group)
+        list_of_character_sets = []
 
-        characters_to_remap = [remap(character_group) for character_group in character_groups]
-        characters_to_not_remap = reduce(lambda a, b: a | b, map(not_remap, character_groups))
-        number_of_fonts = len(self.font_map)
-        substitution_map = {c: c for c in characters_to_not_remap}
+        for substitution_group in substitution_character_sets:
+            character_sets = []
+            for available_characters in available_character_sets:
+                character_sets.append(available_characters & substitution_group)
+            list_of_character_sets.append(character_sets)
 
-        for i in range(number_of_fonts):
+        substitution_map = {}
+
+        for character_sets in list_of_character_sets:
+            substitution_map.update(self._remap_characters(character_sets))
+
+        for c in chain(*available_character_sets):
+            if c not in substitution_map:
+                substitution_map[c] = c
+
+        return substitution_map
+
+    @staticmethod
+    def _remap_characters(character_sets):
+        substitution_map = {}
+        number_of_sets = len(character_sets)
+
+        for i in range(number_of_sets):
             partial_mapping = {}
 
-            for available_characters in itertools.combinations(characters_to_remap, number_of_fonts - i):
+            for available_characters in combinations(character_sets, number_of_sets - i):
                 intersection = list(reduce(lambda a, b: a & b, available_characters))
                 partial_mapping.update(create_substitutions(intersection, intersection))
 
-            for available_characters in characters_to_remap:
+            for available_characters in character_sets:
                 for c in partial_mapping:
                     available_characters.discard(c)
 

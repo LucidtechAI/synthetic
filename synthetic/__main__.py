@@ -4,7 +4,7 @@ import argparse
 import logging
 import pathlib
 import textwrap
-import importlib
+from importlib import import_module
 from functools import partial
 
 import argcomplete
@@ -18,7 +18,7 @@ from .pdf.synthesizer import BasicSynthesizer
 
 def load_class(synthesizer_class):
     module_name, class_name = synthesizer_class.rsplit('.', maxsplit=1)
-    lib = importlib.import_module(module_name)
+    lib = import_module(module_name)
     return getattr(lib, class_name)
 
 

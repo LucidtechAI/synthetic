@@ -64,5 +64,3 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: lucidtechai/synthetic:latest
-
-
