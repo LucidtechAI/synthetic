@@ -10,6 +10,11 @@ This code does not guarantee that PDFs will be successfully anonymized/synthesiz
 $ pip install lucidtech-synthetic
 ```
 
+Make sure to have the following software installed on your system before using the CLI:
+
+- ghostscript
+
+
 ## Basic Usage
 
 ### Docker
@@ -35,9 +40,7 @@ Here is an example of the directory layout for `/path/to/src_dir`:
 ├── a.pdf
 ├── a.json
 ├── b.pdf
-├── b.json
-├── c.pdf
-└── c.json
+└── b.json
 ```
 
 The output directory will follow the same layout but with modified PDFs and JSON ground truths:
@@ -46,9 +49,7 @@ The output directory will follow the same layout but with modified PDFs and JSON
 ├── a.pdf
 ├── a.json
 ├── b.pdf
-├── b.json
-├── c.pdf
-└── c.json
+└── b.json
 ```
 
 ## Using a custom Synthesizer
@@ -100,4 +101,5 @@ $ synthetic --help
 ### PDF Synthesizer
 
 - Does not synthesize images
-- Replaced strings are never hexadecimal encoded
+- Replaced strings are sometimes not hexadecimal encoded even when expected to be
+- Synthesizing text that appears as single characters with custom spacing will often yield poor results
