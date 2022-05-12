@@ -198,7 +198,7 @@ def synthesize_pdf(pdf_file, json_file, dst_dir, synthesizer_class):
             page.Contents = pdf.make_stream(pikepdf.unparse_content_stream(new_content_stream))
 
         out_dst = dst_dir / pdf_file.name
-        pdf.save(out_dst, qdf=True, compress_streams=False)
+        pdf.save(out_dst)
 
     out_json_dst = dst_dir / json_file.name
     out_json_dst.write_text(json.dumps(new_ground_truth, indent=2))
