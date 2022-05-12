@@ -37,6 +37,10 @@ class Font:
             for k, v in unicode_map.cid2unichr.items():
                 reverse_lookup[v] = k
 
+        # Whitespace will sometimes be encoded as soft-hyphen, which does not look correct in the output PDF
+        if reverse_lookup.get(' ') == 173:
+            reverse_lookup[' '] = 32
+
         return reverse_lookup
 
 
