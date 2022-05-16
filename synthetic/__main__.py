@@ -25,7 +25,8 @@ def load_class(synthesizer_class):
 def add_common_args(parser):
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
-    parser.add_argument('--num-documents', type=int)
+    parser.add_argument('--num-documents', '-n', type=int)
+    parser.add_argument('--num-outputs-per-document', '-k', type=int, default=1)
     parser.add_argument('--num-processes', type=int)
 
 

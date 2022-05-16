@@ -63,6 +63,7 @@ def parse_documents(
     accepted_document_types: list[FileType],
     synthesizer_class: Type[Synthesizer],
     parse_fn: Callable[[str, Path, Path, Type[Synthesizer], Path, Path], str],
+    num_outputs_per_document: int,
     num_processes: int = max(1, multiprocessing.cpu_count() - 1),
     num_documents: int = None,
 ):
@@ -77,6 +78,7 @@ def parse_documents(
         _parse_fn = partial(
             parse_fn,
             synthesizer_class=synthesizer_class,
+            num_outputs_per_document=num_outputs_per_document,
             dst_dir=dst_dir,
             tmp_dir=Path(tmp_dir),
         )

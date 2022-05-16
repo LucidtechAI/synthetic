@@ -1,3 +1,4 @@
+import collections
 import json
 import logging
 import subprocess
@@ -143,11 +144,10 @@ def has_form(qpdf_page, operands):
     return False
 
 
-def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer_class: Type[PdfSynthesizer], gt):
+def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
     content_stream = iter(pikepdf.parse_content_stream(qpdf_page))
     new_content_stream = []
     last_used_font = None
-    synthesizer = synthesizer_class(gt, font_map)
 
     for operands, operator in content_stream:
         if operator == pikepdf.Operator('Do'):
@@ -171,19 +171,20 @@ def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer_class: Type[PdfSyn
         else:
             new_content_stream.append((operands, operator))
 
-    return new_content_stream, synthesizer.create_new_ground_truth()
+    return new_content_stream
 
 
-def synthesize_pdf(pdf_file, json_file, dst_dir, synthesizer_class):
+def synthesize_pdf(pdf_file, json_file, dst_dir, num_outputs_per_document, synthesizer_class):
     ground_truth = json.loads(json_file.read_text())
     pdf_io = BytesIO(pdf_file.read_bytes())
     output_string = StringIO()
     rsrcmgr = PDFResourceManager(caching=True)
     device = TextConverter(rsrcmgr, output_string, codec='utf-8', laparams=LAParams())
     interpreter = PDFPageInterpreter(rsrcmgr, device)
+    page_to_font_map = {}
 
     with pikepdf.Pdf.open(pdf_file) as pdf:
-        for page, miner in zip(pdf.pages, PDFPage.get_pages(pdf_io)):
+        for page_number, (page, miner) in enumerate(zip(pdf.pages, PDFPage.get_pages(pdf_io))):
             interpreter.process_page(miner)
 
             font_map = {}
@@ -194,14 +195,30 @@ def synthesize_pdf(pdf_file, json_file, dst_dir, synthesizer_class):
             if not font_map:
                 raise NoFontException
 
-            new_content_stream, new_ground_truth = parse_text(page, font_map, synthesizer_class, ground_truth)
-            page.Contents = pdf.make_stream(pikepdf.unparse_content_stream(new_content_stream))
+            page_to_font_map[page_number] = font_map
 
-        out_dst = dst_dir / pdf_file.name
-        pdf.save(out_dst)
+    synthesizer = synthesizer_class(ground_truth, page_to_font_map)
 
-    out_json_dst = dst_dir / json_file.name
-    out_json_dst.write_text(json.dumps(new_ground_truth, indent=2))
+    with pikepdf.Pdf.open(pdf_file) as pdf:
+        new_contents = collections.defaultdict(list)
+        new_ground_truths = []
+
+        for i in range(num_outputs_per_document):
+            for page_number, page in enumerate(pdf.pages):
+                new_content_stream = parse_text(page, font_map, synthesizer)
+                new_contents[i].append(pdf.make_stream(pikepdf.unparse_content_stream(new_content_stream)))
+
+            new_ground_truths.append(synthesizer.create_new_ground_truth())
+            synthesizer.reset()
+
+        for i in range(num_outputs_per_document):
+            for page_number, page in enumerate(pdf.pages):
+                page.Contents = new_contents[i][page_number]
+
+            out_dst = dst_dir / f'{pdf_file.stem}-{i}.pdf'
+            pdf.save(out_dst)
+            out_json_dst = dst_dir / f'{json_file.stem}-{i}.json'
+            out_json_dst.write_text(json.dumps(new_ground_truths[i], indent=2))
 
 
 def parse_pdf(
@@ -209,6 +226,7 @@ def parse_pdf(
     pdf_file: Path,
     json_file: Path,
     synthesizer_class: Type[PdfSynthesizer],
+    num_outputs_per_document: int,
     dst_dir: Path,
     tmp_dir: Path
 ):
@@ -216,12 +234,12 @@ def parse_pdf(
     status = f'Error when synthesizing {name}'
 
     try:
-        synthesize_pdf(pdf_file, json_file, dst_dir, synthesizer_class)
+        synthesize_pdf(pdf_file, json_file, dst_dir, num_outputs_per_document, synthesizer_class)
         status = f'Successfully synthesized {name}'
     except HasFormException:
         logger.info('Has form! Trying to flatten PDF')
         flattened_pdf_file = flatten(pdf_file, tmp_dir)
-        synthesize_pdf(flattened_pdf_file, json_file, dst_dir, synthesizer_class)
+        synthesize_pdf(flattened_pdf_file, json_file, dst_dir, num_outputs_per_document, synthesizer_class)
         flattened_pdf_file.unlink()
         status = f'Successfully synthesized {name}'
     except NoFontException:
