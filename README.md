@@ -14,7 +14,6 @@ Make sure to have the following software installed on your system before using t
 
 - ghostscript
 
-
 ## Basic Usage
 
 ### Docker
