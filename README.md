@@ -101,4 +101,4 @@ $ synthetic --help
 
 - Does not synthesize images
 - Replaced strings are sometimes not hexadecimal encoded even when expected to be
-- Synthesizing text that appears as single characters with custom spacing will often yield poor results
+- Text appearing as single characters with custom spacing in PDF will often yield poor results
