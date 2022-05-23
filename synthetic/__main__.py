@@ -25,7 +25,8 @@ def load_class(synthesizer_class):
 def add_common_args(parser):
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
-    parser.add_argument('--num-documents', type=int)
+    parser.add_argument('--num-documents', '-n', type=int)
+    parser.add_argument('--num-outputs-per-document', '-k', type=int, default=1)
     parser.add_argument('--num-processes', type=int)
 
 
@@ -33,6 +34,7 @@ def create_pdf_parser(subparsers):
     pdf_parser = subparsers.add_parser('pdf')
     pdf_parser.add_argument('src_dir', type=pathlib.Path)
     pdf_parser.add_argument('dst_dir', type=pathlib.Path)
+    pdf_parser.add_argument('--max-pages', '-m', type=int)
     pdf_parser.add_argument('--synthesizer-class', type=load_class, default=BasicSynthesizer)
     add_common_args(pdf_parser)
     cmd = partial(parse_documents, accepted_document_types=[Pdf], parse_fn=parse_pdf)

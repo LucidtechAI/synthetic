@@ -19,20 +19,21 @@ class PdfSynthesizer(Synthesizer):
     def modify_text(self, text: str, **kwargs):
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def reset(self):
+        raise NotImplementedError
+
 
 class BasicSynthesizer(PdfSynthesizer):
-    def __init__(
-        self,
-        ground_truth: list[dict],
-        font_map: dict[str, Font],
-    ):
+    def __init__(self, ground_truth: list[dict], font_map: dict[str, Font]):
         super().__init__(ground_truth, font_map)
-        available_character_sets = [set(font.available_characters()) for font in self.font_map.values()]
-        substitution_character_sets = [set(string.digits), set(string.ascii_lowercase), set(string.ascii_uppercase)]
-        self.substitution_map = self._create_substitution_map(available_character_sets, substitution_character_sets)
+        self.substitutions = self._create_substitution_map()
 
     def modify_text(self, text: str, **kwargs):
         return self.substitute(text)
+
+    def reset(self):
+        self.substitutions = self._create_substitution_map()
 
     def create_new_ground_truth(self):
         ground_truth = copy.deepcopy(self.ground_truth)
@@ -44,9 +45,12 @@ class BasicSynthesizer(PdfSynthesizer):
         return ground_truth
 
     def substitute(self, text):
-        return ''.join(self.substitution_map.get(c, c) for c in text)
+        return ''.join(self.substitutions.get(c, c) for c in text)
 
-    def _create_substitution_map(self, available_character_sets, substitution_character_sets):
+    def _create_substitution_map(self):
+        available_character_sets = [set(font.available_characters()) for font in self.font_map.values()]
+        substitution_character_sets = [set(string.digits), set(string.ascii_lowercase), set(string.ascii_uppercase)]
+
         if len(substitution_character_sets) > 1:
             assert all([a.isdisjoint(b) for a, b in combinations(substitution_character_sets, 2)])
 

@@ -1,6 +1,10 @@
+import collections
 import json
 import logging
+import re
+import string
 import subprocess
+from functools import partial
 from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Type
@@ -129,7 +133,11 @@ class HasFormException(Exception):
     pass
 
 
-class NoFontException(Exception):
+class NoTextException(Exception):
+    pass
+
+
+class TooManyPagesException(Exception):
     pass
 
 
@@ -143,11 +151,10 @@ def has_form(qpdf_page, operands):
     return False
 
 
-def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer_class: Type[PdfSynthesizer], gt):
+def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
     content_stream = iter(pikepdf.parse_content_stream(qpdf_page))
     new_content_stream = []
     last_used_font = None
-    synthesizer = synthesizer_class(gt, font_map)
 
     for operands, operator in content_stream:
         if operator == pikepdf.Operator('Do'):
@@ -171,37 +178,53 @@ def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer_class: Type[PdfSyn
         else:
             new_content_stream.append((operands, operator))
 
-    return new_content_stream, synthesizer.create_new_ground_truth()
+    return new_content_stream
 
 
-def synthesize_pdf(pdf_file, json_file, dst_dir, synthesizer_class):
+def synthesize_pdf(pdf_file, json_file, dst_dir, max_pages, num_outputs_per_document, synthesizer_class):
     ground_truth = json.loads(json_file.read_text())
     pdf_io = BytesIO(pdf_file.read_bytes())
     output_string = StringIO()
     rsrcmgr = PDFResourceManager(caching=True)
     device = TextConverter(rsrcmgr, output_string, codec='utf-8', laparams=LAParams())
     interpreter = PDFPageInterpreter(rsrcmgr, device)
+    interpreter_fonts = {}
 
     with pikepdf.Pdf.open(pdf_file) as pdf:
-        for page, miner in zip(pdf.pages, PDFPage.get_pages(pdf_io)):
+        if max_pages and len(pdf.pages) > max_pages:
+            raise TooManyPagesException(f'Too many pages {len(pdf.pages)} > {max_pages} in PDF, skipping!')
+
+        for page_number, (page, miner) in enumerate(zip(pdf.pages, PDFPage.get_pages(pdf_io))):
             interpreter.process_page(miner)
+            interpreter_fonts.update(interpreter.fontmap)
 
-            font_map = {}
-            for font_name, font_val in page.resources.get('/Font', {}).items():
-                if font_obj := interpreter.fontmap.get(font_name.lstrip('/')):
-                    font_map[font_name] = Font(font_name, font_obj)
+    if not re.sub(f'[{re.escape(string.whitespace)}]', '', output_string.getvalue()):
+        raise NoTextException('PDF does not have any text! Skipping')
 
-            if not font_map:
-                raise NoFontException
+    font_map = {f'/{k}': Font(f'/{k}', v) for k, v in interpreter_fonts.items()}
+    synthesizer = synthesizer_class(ground_truth, font_map)
 
-            new_content_stream, new_ground_truth = parse_text(page, font_map, synthesizer_class, ground_truth)
-            page.Contents = pdf.make_stream(pikepdf.unparse_content_stream(new_content_stream))
+    with pikepdf.Pdf.open(pdf_file) as pdf:
+        new_contents = collections.defaultdict(list)
+        new_ground_truths = []
 
-        out_dst = dst_dir / pdf_file.name
-        pdf.save(out_dst)
+        for i in range(num_outputs_per_document):
+            for page_number, page in enumerate(pdf.pages):
+                new_content_stream = parse_text(page, font_map, synthesizer)
+                new_contents[i].append(pdf.make_stream(pikepdf.unparse_content_stream(new_content_stream)))
 
-    out_json_dst = dst_dir / json_file.name
-    out_json_dst.write_text(json.dumps(new_ground_truth, indent=2))
+            new_ground_truths.append(synthesizer.create_new_ground_truth())
+            synthesizer.reset()
+
+        for i in range(num_outputs_per_document):
+            for page_number, page in enumerate(pdf.pages):
+                page.Contents = new_contents[i][page_number]
+
+            name = json_file.stem
+            out_dst = dst_dir / f'{name}-{i}.pdf'
+            pdf.save(out_dst)
+            out_json_dst = dst_dir / f'{name}-{i}.json'
+            out_json_dst.write_text(json.dumps(new_ground_truths[i], indent=2))
 
 
 def parse_pdf(
@@ -209,23 +232,33 @@ def parse_pdf(
     pdf_file: Path,
     json_file: Path,
     synthesizer_class: Type[PdfSynthesizer],
+    max_pages: int,
+    num_outputs_per_document: int,
     dst_dir: Path,
     tmp_dir: Path
 ):
     logger.info(f'{name}: {pdf_file} {json_file}')
     status = f'Error when synthesizing {name}'
+    synthesize_fn = partial(
+        synthesize_pdf,
+        json_file=json_file,
+        dst_dir=dst_dir,
+        max_pages=max_pages,
+        num_outputs_per_document=num_outputs_per_document,
+        synthesizer_class=synthesizer_class,
+    )
 
     try:
-        synthesize_pdf(pdf_file, json_file, dst_dir, synthesizer_class)
+        synthesize_fn(pdf_file)
         status = f'Successfully synthesized {name}'
     except HasFormException:
         logger.info('Has form! Trying to flatten PDF')
-        flattened_pdf_file = flatten(pdf_file, tmp_dir)
-        synthesize_pdf(flattened_pdf_file, json_file, dst_dir, synthesizer_class)
-        flattened_pdf_file.unlink()
-        status = f'Successfully synthesized {name}'
-    except NoFontException:
-        logger.warning('PDF does not have any fonts! Skipping')
+        if flattened_pdf_file := flatten(pdf_file, tmp_dir):
+            synthesize_fn(flattened_pdf_file)
+            flattened_pdf_file.unlink()
+            status = f'Successfully synthesized {name}'
+    except (NoTextException, TooManyPagesException) as e:
+        logger.error(e.message)
     except FileNotFoundError as e:
         logger.error(e)
 
@@ -233,6 +266,9 @@ def parse_pdf(
 
 
 def flatten(pdf_file, tmp_dir):
-    dst_path = tmp_dir / f'{pdf_file.stem}.flattened.pdf'
-    subprocess.run(f'gs -q -sDEVICE=pdfwrite -o {dst_path} {pdf_file}', shell=True)
-    return dst_path
+    try:
+        dst_path = tmp_dir / f'{pdf_file.stem}.flattened.pdf'
+        subprocess.run(f'gs -q -sDEVICE=pdfwrite -o {dst_path} {pdf_file}', shell=True, timeout=15)
+        return dst_path
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        logger.error(e)
