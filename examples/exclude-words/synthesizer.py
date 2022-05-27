@@ -13,7 +13,7 @@ class ExcludeWordsSynthesizer(BasicSynthesizer):
     WORDS_DELIM = ' '
     WORDS_FILE = pathlib.Path(__file__).parent / 'words.json'
     EXCLUDED_WORDS = set(json.loads(WORDS_FILE.read_text()))
-    IGNORE_CAPS_IN_EXCLUDED_WORDS = True
+    IGNORE_CASE_IN_EXCLUDED_WORDS = True
 
     def modify_text(self, text: str, **kwargs):
         return self._split_and_modify(text)
@@ -30,7 +30,7 @@ class ExcludeWordsSynthesizer(BasicSynthesizer):
     def _split_and_modify(self, text):
         words = []
         for word in text.split(self.WORDS_DELIM):
-            if (word.upper() if self.IGNORE_CAPS_IN_EXCLUDED_WORDS else word) in self.EXCLUDED_WORDS:
+            if (word.upper() if self.IGNORE_CASE_IN_EXCLUDED_WORDS else word) in self.EXCLUDED_WORDS:
                 words.append(word)
             else:
                 words.append(self.substitute(word))
