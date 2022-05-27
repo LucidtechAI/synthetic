@@ -30,7 +30,8 @@ def iter_documents(src_dir, accepted_document_types):
     grouped_paths = defaultdict(list)
 
     for path in src_dir.iterdir():
-        grouped_paths[path.stem].append(path)
+        if path.is_file():
+            grouped_paths[path.stem].append(path)
 
     for name, paths in grouped_paths.items():
         document_path = None
