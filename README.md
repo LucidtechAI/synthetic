@@ -1,10 +1,18 @@
 # PDF anonymizer/synthesizer for Cradl
 
+![Github Actions build status](https://github.com/LucidtechAI/synthetic/actions/workflows/pipeline.yaml/badge.svg)
+![PyPi version](https://img.shields.io/pypi/v/lucidtech-synthetic?logo=PyPi)
+![Python version](https://img.shields.io/pypi/pyversions/lucidtech-synthetic?logo=Python)
+![Dockerhub version](https://img.shields.io/docker/v/lucidtechai/synthetic?logo=Docker)
+
 ## Disclaimer
 
 This code does not guarantee that PDFs will be successfully anonymized/synthesized. Use at your own risk.
 
 ## Installation
+
+- [Link to PyPi](https://pypi.org/project/lucidtech-synthetic/)
+- [Link to Dockerhub](https://hub.docker.com/r/lucidtechai/synthetic/tags)
 
 ```bash
 $ pip install lucidtech-synthetic
