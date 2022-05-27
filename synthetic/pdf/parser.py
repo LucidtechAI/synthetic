@@ -137,6 +137,14 @@ class NoTextException(Exception):
     pass
 
 
+class AlreadyProcessed(Exception):
+    pass
+
+
+class TooManyFontsException(Exception):
+    pass
+
+
 class TooManyPagesException(Exception):
     pass
 
@@ -181,7 +189,15 @@ def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
     return new_content_stream
 
 
-def synthesize_pdf(pdf_file, json_file, dst_dir, max_pages, num_outputs_per_document, synthesizer_class):
+def synthesize_pdf(
+    pdf_file,
+    json_file,
+    dst_dir,
+    max_fonts,
+    max_pages,
+    num_outputs_per_document,
+    synthesizer_class,
+):
     ground_truth = json.loads(json_file.read_text())
     pdf_io = BytesIO(pdf_file.read_bytes())
     output_string = StringIO()
@@ -190,6 +206,17 @@ def synthesize_pdf(pdf_file, json_file, dst_dir, max_pages, num_outputs_per_docu
     interpreter = PDFPageInterpreter(rsrcmgr, device)
     interpreter_fonts = {}
 
+    def _out_path(_i, suffix):
+        return dst_dir / f'{json_file.stem}-{_i}{suffix}'
+
+    k_to_process = []
+    for i in range(num_outputs_per_document):
+        if not (_out_path(i, '.pdf').exists() and _out_path(i, '.json').exists()):
+            k_to_process.append(i)
+
+    if not k_to_process:
+        raise AlreadyProcessed(f'Already processed {pdf_file} {json_file}')
+
     with pikepdf.Pdf.open(pdf_file) as pdf:
         if max_pages and len(pdf.pages) > max_pages:
             raise TooManyPagesException(f'Too many pages {len(pdf.pages)} > {max_pages} in PDF, skipping!')
@@ -197,6 +224,9 @@ def synthesize_pdf(pdf_file, json_file, dst_dir, max_pages, num_outputs_per_docu
         for page_number, (page, miner) in enumerate(zip(pdf.pages, PDFPage.get_pages(pdf_io))):
             interpreter.process_page(miner)
             interpreter_fonts.update(interpreter.fontmap)
+
+    if max_fonts and len(interpreter_fonts) > max_fonts:
+        raise TooManyFontsException(f'Too many fonts {len(interpreter_fonts)} > {max_fonts} in PDF, skipping!')
 
     if not re.sub(f'[{re.escape(string.whitespace)}]', '', output_string.getvalue()):
         raise NoTextException('PDF does not have any text! Skipping')
@@ -208,7 +238,7 @@ def synthesize_pdf(pdf_file, json_file, dst_dir, max_pages, num_outputs_per_docu
         new_contents = collections.defaultdict(list)
         new_ground_truths = []
 
-        for i in range(num_outputs_per_document):
+        for i in k_to_process:
             for page_number, page in enumerate(pdf.pages):
                 new_content_stream = parse_text(page, font_map, synthesizer)
                 new_contents[i].append(pdf.make_stream(pikepdf.unparse_content_stream(new_content_stream)))
@@ -216,15 +246,12 @@ def synthesize_pdf(pdf_file, json_file, dst_dir, max_pages, num_outputs_per_docu
             new_ground_truths.append(synthesizer.create_new_ground_truth())
             synthesizer.reset()
 
-        for i in range(num_outputs_per_document):
+        for i in k_to_process:
             for page_number, page in enumerate(pdf.pages):
                 page.Contents = new_contents[i][page_number]
 
-            name = json_file.stem
-            out_dst = dst_dir / f'{name}-{i}.pdf'
-            pdf.save(out_dst)
-            out_json_dst = dst_dir / f'{name}-{i}.json'
-            out_json_dst.write_text(json.dumps(new_ground_truths[i], indent=2))
+            pdf.save(_out_path(i, '.pdf'))
+            _out_path(i, '.json').write_text(json.dumps(new_ground_truths[i], indent=2))
 
 
 def parse_pdf(
@@ -232,6 +259,7 @@ def parse_pdf(
     pdf_file: Path,
     json_file: Path,
     synthesizer_class: Type[PdfSynthesizer],
+    max_fonts: int,
     max_pages: int,
     num_outputs_per_document: int,
     dst_dir: Path,
@@ -243,6 +271,7 @@ def parse_pdf(
         synthesize_pdf,
         json_file=json_file,
         dst_dir=dst_dir,
+        max_fonts=max_fonts,
         max_pages=max_pages,
         num_outputs_per_document=num_outputs_per_document,
         synthesizer_class=synthesizer_class,
@@ -257,9 +286,7 @@ def parse_pdf(
             synthesize_fn(flattened_pdf_file)
             flattened_pdf_file.unlink()
             status = f'Successfully synthesized {name}'
-    except (NoTextException, TooManyPagesException) as e:
-        logger.error(e.message)
-    except FileNotFoundError as e:
+    except (AlreadyProcessed, FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException) as e:
         logger.error(e)
 
     return status
