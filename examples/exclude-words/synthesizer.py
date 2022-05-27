@@ -12,6 +12,7 @@ class ExcludeWordsSynthesizer(BasicSynthesizer):
     """
     WORDS_DELIM = ' '
     WORDS_FILE = pathlib.Path(__file__).parent / 'words.json'
+    CAPITALIZE_WORDS = True
     EXCLUDED_WORDS = set(json.loads(WORDS_FILE.read_text()))
 
     def modify_text(self, text: str, **kwargs):
@@ -29,7 +30,7 @@ class ExcludeWordsSynthesizer(BasicSynthesizer):
     def _split_and_modify(self, text):
         words = []
         for word in text.split(self.WORDS_DELIM):
-            if word in self.EXCLUDED_WORDS:
+            if (word.upper() if self.CAPITALIZE_WORDS else word) in self.EXCLUDED_WORDS:
                 words.append(word)
             else:
                 words.append(self.substitute(word))
