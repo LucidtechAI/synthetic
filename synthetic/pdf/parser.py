@@ -286,9 +286,7 @@ def parse_pdf(
             synthesize_fn(flattened_pdf_file)
             flattened_pdf_file.unlink()
             status = f'Successfully synthesized {name}'
-    except (AlreadyProcessed, NoTextException, TooManyFontsException, TooManyPagesException) as e:
-        logger.error(e)
-    except FileNotFoundError as e:
+    except (AlreadyProcessed, FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException) as e:
         logger.error(e)
 
     return status
