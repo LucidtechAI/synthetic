@@ -89,8 +89,7 @@ def parse_documents(
         )
         futures = []
 
-        for name, document_path, ground_truth_path in documents:
-            args = (name, document_path, ground_truth_path)
+        for args in documents:
             futures.append(executor.submit(_parse_fn, *args))
 
         for future in as_completed(futures):

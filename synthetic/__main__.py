@@ -72,11 +72,11 @@ def main():
 
     try:
         cmd = args.pop('cmd')
-    except:
+    except KeyError:
         parser.print_help()
         exit(1)
 
-    cmd(**args)
+    cmd(**{k: v for k, v in args.items() if v})
 
 
 if __name__ == '__main__':

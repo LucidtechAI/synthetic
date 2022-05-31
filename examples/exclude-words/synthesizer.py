@@ -6,17 +6,20 @@ from synthetic.core.ground_truth import parse_labels_in_ground_truth
 from synthetic.pdf.synthesizer import BasicSynthesizer
 
 
+WORDS_FILE = pathlib.Path(__file__).parent / 'words.json'
+IGNORE_CASE_IN_EXCLUDED_WORDS = True
+
+
+def _fix_case(word):
+    return word.upper() if IGNORE_CASE_IN_EXCLUDED_WORDS else word
+
+
 class ExcludeWordsSynthesizer(BasicSynthesizer):
     """
     This synthesizer ignores synthesizing words that appear in EXCLUDED_WORDS (./words.json file)
     """
+    EXCLUDED_WORDS = set(_fix_case(word) for word in json.loads(WORDS_FILE.read_text()))
     WORDS_DELIM = ' '
-    WORDS_FILE = pathlib.Path(__file__).parent / 'words.json'
-    IGNORE_CASE_IN_EXCLUDED_WORDS = True
-    EXCLUDED_WORDS = set([
-        (word.upper() if IGNORE_CASE_IN_EXCLUDED_WORDS else word)
-        for word in json.loads(WORDS_FILE.read_text())
-    ])
 
     def modify_text(self, text: str, **kwargs):
         return self._split_and_modify(text)
@@ -33,7 +36,7 @@ class ExcludeWordsSynthesizer(BasicSynthesizer):
     def _split_and_modify(self, text):
         words = []
         for word in text.split(self.WORDS_DELIM):
-            if (word.upper() if self.IGNORE_CASE_IN_EXCLUDED_WORDS else word) in self.EXCLUDED_WORDS:
+            if _fix_case(word) in self.EXCLUDED_WORDS:
                 words.append(word)
             else:
                 words.append(self.substitute(word))
