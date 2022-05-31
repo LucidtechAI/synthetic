@@ -4,6 +4,7 @@
 ![Python version](https://img.shields.io/pypi/pyversions/lucidtech-synthetic?logo=Python)
 ![PyPi version](https://img.shields.io/pypi/v/lucidtech-synthetic?logo=PyPi)
 ![Dockerhub version](https://img.shields.io/docker/v/lucidtechai/synthetic?logo=Docker)
+![License](https://img.shields.io/github/license/LucidtechAI/synthetic)
 
 ## Disclaimer
 
