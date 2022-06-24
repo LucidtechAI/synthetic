@@ -293,7 +293,7 @@ def parse_pdf(
     except Exception as e:
         logger.exception(e)
         link = 'https://github.com/LucidtechAI/synthetic/issues'
-        logger.error(f'This might be a bug, please create open an issue here {link}')
+        logger.error(f'This might be a bug, please open an issue here {link}')
 
     return status
 
