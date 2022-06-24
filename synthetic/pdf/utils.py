@@ -1,4 +1,4 @@
-from pdfminer.pdffont import PDFUnicodeNotDefined, PDFFont
+from pdfminer.pdffont import PDFFont
 
 
 class Font:
