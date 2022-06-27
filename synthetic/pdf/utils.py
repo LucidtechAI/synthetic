@@ -1,4 +1,4 @@
-from pdfminer.pdffont import PDFUnicodeNotDefined, PDFFont
+from pdfminer.pdffont import PDFFont
 
 
 class Font:
@@ -17,10 +17,7 @@ class Font:
     def decode(self, _bytes: bytes) -> str:
         _unicode = ''
         for cid in self.pdffont.decode(_bytes):
-            try:
-                _unicode += self.pdffont.to_unichr(cid)
-            except PDFUnicodeNotDefined:
-                pass
+            _unicode += self.pdffont.to_unichr(cid)
         return _unicode
 
     def available_characters(self):

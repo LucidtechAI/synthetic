@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.3.5 - 2022-06-27
+
+- Now catching additional exceptions that might occur when synthesizing PDFs.
+
 ## Version 0.3.1 - 2022-05-27
 
 - Now checking `dst_dir` for existing files to avoid processing already processed PDFs.

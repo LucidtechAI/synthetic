@@ -286,8 +286,14 @@ def parse_pdf(
             synthesize_fn(flattened_pdf_file)
             flattened_pdf_file.unlink()
             status = f'Successfully synthesized {name}'
-    except (AlreadyProcessed, FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException) as e:
+    except AlreadyProcessed as e:
+        logger.warning(e)
+    except (FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException) as e:
         logger.error(e)
+    except Exception as e:
+        logger.exception(e)
+        link = 'https://github.com/LucidtechAI/synthetic/issues'
+        logger.error(f'This might be a bug, please open an issue here {link}')
 
     return status
 
