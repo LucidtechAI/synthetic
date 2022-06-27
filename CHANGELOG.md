@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 0.3.5 - 2022-05-27
+## Version 0.3.5 - 2022-06-27
 
 - Now catching additional exceptions that might occur when synthesizing PDFs.
 
