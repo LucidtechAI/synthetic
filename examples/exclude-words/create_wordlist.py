@@ -18,7 +18,7 @@ def main(args):
     for file in glob.glob(file_path + '*.pdf'):
         text = extract_text(file)
         sentence_list = text.split('\n')
-        sentence_list = [word for word in sentence_list if word != '']
+        sentence_list = [sentence for sentence in sentence_list if sentence]
 
         for sentence in sentence_list:
             for word in sentence.split(' '):
@@ -33,8 +33,7 @@ def main(args):
         if word_frequency >= frequency:
             word_list.append(word)
 
-    with open(words_file, 'w') as json_file:
-        json.dump(word_list, json_file)
+    words_file.write_text(json.dumps(word_list, indent=2))
     print(f'Written {len(word_list)} words to {words_file}.')
 
 
@@ -42,7 +41,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Create wordlist of most common words from files in a folder. These will not be changed '
         'when documents are synthesized.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument('file_path', help='path to folder containing the files from which to create wordlist')
     parser.add_argument('minimal_frequency', help='minimal frequency for which to add word to word.json')
     parser.add_argument('--minimal_length', help='minimal length of words added to the word list', default=3)
