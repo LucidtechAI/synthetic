@@ -13,6 +13,7 @@ def main(args):
     minimum_frequency = args.minimum_frequency
     minimum_length = args.minimum_length
     allow_numeric = args.allow_numeric
+    remove_characters = args.remove_characters
     words_file = args.words_file
 
     word_dict = Counter()
@@ -27,7 +28,7 @@ def main(args):
         for sentence in sentence_list:
             for word in sentence.split(' '):
                 word = word.lower()
-                word.replace(':', '')
+                word = word.replace(remove_characters, '')
                 if not allow_numeric and word.isnumeric():
                     continue
                 if len(word) >= minimum_length:
@@ -55,9 +56,11 @@ if __name__ == '__main__':
     parser.add_argument('minimum_frequency', type=int, help='minimum frequency for which to add word to word.json')
     parser.add_argument('--minimum_length', type=int, help='minimum length of words added to the word list', default=3)
     parser.add_argument('--allow_numeric', action='store_true', help='let numeric strings be added to word list')
+    parser.add_argument('--remove_characters', help='remove these characters from words in wordlist', default='')
     parser.add_argument(
         '--words_file',
         help='json file containing the wordlist',
+        type=Path,
         default=Path(__file__).parent / 'words.json',
     )
     arguments = parser.parse_args()
