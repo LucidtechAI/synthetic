@@ -1,9 +1,9 @@
 import argparse
 import filetype
-from filetype.types.archive import Pdf
 import glob
 import json
 from collections import Counter
+from filetype.types.archive import Pdf
 from pathlib import Path
 from pdfminer.high_level import extract_text
 
