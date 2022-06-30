@@ -1,4 +1,6 @@
 import argparse
+import filetype
+from filetype.types.archive import Pdf
 import glob
 import json
 from collections import Counter
@@ -15,7 +17,8 @@ def main(args):
 
     word_dict = Counter()
     for file in file_path.iterdir():
-        if file.suffix != '.pdf':
+        kind = filetype.guess(file)
+        if not isinstance(kind, Pdf):
             continue
         text = extract_text(file)
         sentence_list = text.split('\n')
