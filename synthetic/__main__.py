@@ -9,11 +9,14 @@ from functools import partial
 
 import argcomplete
 from filetype.types.archive import Pdf
+from filetype.types.image import Jpeg
 
 from .__version__ import __version__
+from .image.parser import parse_image
+from .image.synthesizer import BasicSynthesizer as BasicImageSynthesizer
 from .iterdata import parse_documents
 from .pdf.parser import parse_pdf
-from .pdf.synthesizer import BasicSynthesizer
+from .pdf.synthesizer import BasicSynthesizer as BasicPdfSynthesizer
 
 
 def load_class(synthesizer_class):
@@ -23,6 +26,8 @@ def load_class(synthesizer_class):
 
 
 def add_common_args(parser):
+    parser.add_argument('src_dir', type=pathlib.Path)
+    parser.add_argument('dst_dir', type=pathlib.Path)
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
     parser.add_argument('--num-documents', '-n', type=int)
@@ -32,14 +37,24 @@ def add_common_args(parser):
 
 def create_pdf_parser(subparsers):
     pdf_parser = subparsers.add_parser('pdf')
-    pdf_parser.add_argument('src_dir', type=pathlib.Path)
-    pdf_parser.add_argument('dst_dir', type=pathlib.Path)
+    add_common_args(pdf_parser)
     pdf_parser.add_argument('--max-fonts', type=int)
     pdf_parser.add_argument('--max-pages', type=int)
-    pdf_parser.add_argument('--synthesizer-class', type=load_class, default=BasicSynthesizer)
-    add_common_args(pdf_parser)
+    pdf_parser.add_argument('--synthesizer-class', type=load_class, default=BasicPdfSynthesizer)
     cmd = partial(parse_documents, accepted_document_types=[Pdf], parse_fn=parse_pdf)
+    pdf_parser.set_defaults(optionals=['max_fonts', 'max_pages'])
     pdf_parser.set_defaults(cmd=cmd)
+
+
+def create_image_parser(subparsers):
+    image_parser = subparsers.add_parser('image')
+    add_common_args(image_parser)
+    image_parser.add_argument('--font-path', type=pathlib.Path)
+    image_parser.add_argument('--font-size', type=int)
+    image_parser.add_argument('--synthesizer-class', type=load_class, default=BasicImageSynthesizer)
+    cmd = partial(parse_documents, accepted_document_types=[Jpeg], parse_fn=parse_image)
+    image_parser.set_defaults(optionals=['font_path', 'font_size'])
+    image_parser.set_defaults(cmd=cmd)
 
 
 def create_parser():
@@ -53,6 +68,7 @@ def create_parser():
     )
     subparsers = parser.add_subparsers()
     create_pdf_parser(subparsers)
+    create_image_parser(subparsers)
     argcomplete.autocomplete(parser)
     return parser
 
@@ -72,11 +88,14 @@ def main():
 
     try:
         cmd = args.pop('cmd')
+        optionals = args.pop('optionals')
     except KeyError:
         parser.print_help()
         exit(1)
 
-    cmd(**{k: v for k, v in args.items() if v})
+    kwargs = {k: v for k, v in args.items() if (v and k not in optionals)}
+    options = {k: v for k, v in args.items() if (v and k in optionals)}
+    cmd(**kwargs, options=options)
 
 
 if __name__ == '__main__':

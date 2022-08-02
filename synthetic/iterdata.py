@@ -65,10 +65,9 @@ def parse_documents(
     synthesizer_class: Type[Synthesizer],
     parse_fn: Callable[[str, Path, Path, Type[Synthesizer], Path, Path], str],
     num_outputs_per_document: int,
-    max_fonts: int = None,
-    max_pages: int = None,
     num_processes: int = max(1, multiprocessing.cpu_count() - 1),
     num_documents: int = None,
+    options: dict = None,
 ):
     dst_dir.mkdir(exist_ok=True)
 
@@ -81,11 +80,10 @@ def parse_documents(
         _parse_fn = partial(
             parse_fn,
             synthesizer_class=synthesizer_class,
-            max_fonts=max_fonts,
-            max_pages=max_pages,
             num_outputs_per_document=num_outputs_per_document,
             dst_dir=dst_dir,
             tmp_dir=Path(tmp_dir),
+            **(options or {}),
         )
         futures = []
 
