@@ -149,6 +149,10 @@ class TooManyPagesException(Exception):
     pass
 
 
+class TooManySingleChars(Exception):
+    pass
+
+
 def has_form(qpdf_page, operands):
     for operand in filter(_is_name_op, operands):
         x_object = qpdf_page.Resources.XObject.get(str(operand))
@@ -163,6 +167,7 @@ def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
     content_stream = iter(pikepdf.parse_content_stream(qpdf_page))
     new_content_stream = []
     last_used_font = None
+    text_lengths = collections.Counter()
 
     for operands, operator in content_stream:
         if operator == pikepdf.Operator('Do'):
@@ -180,11 +185,16 @@ def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
                 current_font=last_used_font,
             )
             for text_id, text, font in text_block:
+                text_lengths[len(text)] += 1
                 modified_text = synthesizer.modify_text(text, font=font)
                 text_block.set_unicode_text(text_id, modified_text)
             new_content_stream.extend(text_block.content_stream)
         else:
             new_content_stream.append((operands, operator))
+
+    single_chars = text_lengths[1] / sum(text_lengths.values())
+    if single_chars > 0.9:
+        raise TooManySingleChars(f'Too many single characters in document ({single_chars * 100:.2f}%)')
 
     return new_content_stream
 
@@ -283,12 +293,18 @@ def parse_pdf(
     except HasFormException:
         logger.info('Has form! Trying to flatten PDF')
         if flattened_pdf_file := flatten(pdf_file, tmp_dir):
-            synthesize_fn(flattened_pdf_file)
-            flattened_pdf_file.unlink()
-            status = f'Successfully synthesized {name}'
+            try:
+                synthesize_fn(flattened_pdf_file)
+                status = f'Successfully synthesized {name}'
+            except HasFormException:
+                logger.error('Failed to get rid of forms in flattened PDF')
+            except Exception as e:
+                logger.error(e)
+            finally:
+                flattened_pdf_file.unlink()
     except AlreadyProcessed as e:
         logger.warning(e)
-    except (FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException) as e:
+    except (FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException, TooManySingleChars) as e:
         logger.error(e)
     except Exception as e:
         logger.exception(e)
