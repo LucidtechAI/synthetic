@@ -1,4 +1,5 @@
 import abc
+import random
 
 from ..core.synthesizer import Synthesizer
 
@@ -22,7 +23,9 @@ class BasicSynthesizer(Synthesizer):
 
     @abc.abstractmethod
     def modify_text(self, text: str, **kwargs):
-        return 'FOOBAR'
+        chars = list(text)
+        random.shuffle(chars)
+        return ''.join(chars)
 
     @abc.abstractmethod
     def reset(self):

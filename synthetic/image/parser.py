@@ -38,7 +38,7 @@ def synthesize_image(
         raise AlreadyProcessed(f'Already processed {image_file} {json_file}')
 
     ground_truth = json.loads(json_file.read_text())
-    font = ImageFont.truetype(str(font_path), font_size)
+    fonts = {i: ImageFont.truetype(str(font_path), i) for i in range(font_size, 6, -1)}
     image = Image.open(image_file)
     synthesizer = synthesizer_class(ground_truth)
 
@@ -59,7 +59,7 @@ def synthesize_image(
         for box, text in box_to_text_dict.items():
             print(f"Writing '{text}' at {box}")
 
-        output_image = doodle_on(image, box_to_text_dict, {font_size: font})
+        output_image = doodle_on(image, box_to_text_dict, fonts)
         output_image.save(_out_path(i, '.jpeg'))
         _out_path(i, '.json').write_text(json.dumps(new_ground_truth, indent=2))
 
@@ -90,6 +90,8 @@ def parse_image(
     try:
         synthesize_fn(image_file)
         status = f'Successfully synthesized {name}'
+    except AlreadyProcessed as e:
+        logger.warning(e)
     except Exception as e:
         logger.exception(e)
         link = 'https://github.com/LucidtechAI/synthetic/issues'

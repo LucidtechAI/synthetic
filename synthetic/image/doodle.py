@@ -214,14 +214,13 @@ def tweak_box(edginess, xmin, ymin, xmax, ymax):
     best_box = None
     D = max(2, int(np.sqrt(dx*dy)/10))
     for possible_box in itertools.product(
-            range(xmin-dx, xmin+dxh + 1),
-            range(ymin-dy, ymin+dyh + 1),
-            range(xmax-dxh, xmax+dx+1),
-            range(ymax-dxh, ymax+dy+1)
+        range(xmin-dx, xmin+dxh + 1),
+        range(ymin-dy, ymin+dyh + 1),
+        range(xmax-dxh, xmax+dx+1),
+        range(ymax-dxh, ymax+dy+1),
     ):
         xm, ym, xM, yM = possible_box
-        E = sum(edginess[ym-D:yM+D+1, xm-D:xM+D+1]) - \
-            sum(edginess[ym+D:yM-D+1, xm+D:xM-D+1])
+        E = np.sum(edginess[ym-D:yM+D+1, xm-D:xM+D+1]) - np.sum(edginess[ym+D:yM-D+1, xm+D:xM-D+1])
         if E < min_val:
             min_val = E
             best_box = xm, ym, xM, yM
@@ -275,7 +274,9 @@ def doodle_on(img, box_to_text_dict, fonts_by_size):
     for box, text in tweaked_boxes.items():
         xmin, ymin, xmax, ymax = box
         sub_edge_img = edge_img.crop((xmin, ymin, xmax, ymax))
-        angle = compute_angle(sub_edge_img, N_sample=Ntheta) #+ random.uniform(-180/Ntheta, 180/Ntheta)
+        angle = 0
+        print('angle: ', angle)
+        #angle = compute_angle(sub_edge_img, N_sample=Ntheta) #+ random.uniform(-180/Ntheta, 180/Ntheta)
         img_arr = glue_text(text, img_arr, xmin, ymin, xmax, ymax, -angle, fonts_by_size)
 
     return compress(arr_to_img(img_arr), q=80)
