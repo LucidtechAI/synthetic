@@ -38,22 +38,58 @@ def add_common_args(parser):
 def create_pdf_parser(subparsers):
     pdf_parser = subparsers.add_parser('pdf')
     add_common_args(pdf_parser)
-    pdf_parser.add_argument('--max-fonts', type=int)
-    pdf_parser.add_argument('--max-pages', type=int)
+    pdf_parser.add_argument(
+        '--max-fonts',
+        type=int,
+        help=(
+            'Maximum number of fonts to accept in PDF. Any PDF containing more fonts than --max-fonts will not be '
+            'synthesized. Use this option if synthesizing is slow for some PDFs.'
+        )
+    )
+    pdf_parser.add_argument(
+        '--max-pages',
+        type=int,
+        help=(
+            'Maximum number of pages to accept in PDF. Any PDF containing more pages than --max-pages will not be '
+            'synthesized. Use this option if synthesizing is slow for some PDFs.'
+        )
+    )
     pdf_parser.add_argument('--synthesizer-class', type=load_class, default=BasicPdfSynthesizer)
     cmd = partial(parse_documents, accepted_document_types=[Pdf], parse_fn=parse_pdf)
     pdf_parser.set_defaults(optionals=['max_fonts', 'max_pages'])
     pdf_parser.set_defaults(cmd=cmd)
 
 
+def int_range(value):
+    from_size, to_size = value.split('-')
+    from_size = int(from_size)
+    to_size = int(to_size)
+    return from_size, to_size
+
+
 def create_image_parser(subparsers):
     image_parser = subparsers.add_parser('image')
     add_common_args(image_parser)
-    image_parser.add_argument('--font-path', type=pathlib.Path)
-    image_parser.add_argument('--font-size', type=int)
+    image_parser.add_argument('font_path', type=pathlib.Path)
+    image_parser.add_argument('font_size_range', type=int_range, help='A-B where A and B are integers > 0')
+    image_parser.add_argument(
+        '--jitter',
+        type=float,
+        help=(
+            'Randomly jitter bounding boxes up to "jitter" amount. The jitter amount should be a float between 0 and 1'
+        )
+    )
+    image_parser.add_argument(
+        '--max-size',
+        type=int,
+        help=(
+            'Resize image if width and height of image multiplied is greater than --max-size. Synthesizing large '
+            'images will have a huge performance hit'
+        )
+    )
     image_parser.add_argument('--synthesizer-class', type=load_class, default=BasicImageSynthesizer)
     cmd = partial(parse_documents, accepted_document_types=[Jpeg], parse_fn=parse_image)
-    image_parser.set_defaults(optionals=['font_path', 'font_size'])
+    image_parser.set_defaults(optionals=['font_path', 'font_size_range', 'jitter'])
     image_parser.set_defaults(cmd=cmd)
 
 
@@ -61,7 +97,7 @@ def create_parser():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description=textwrap.dedent('''
-            PDF anonymizer/synthesizer for Cradl, see --help for more info. To use tab completion make sure you 
+            Image/PDF synthesizer for Cradl, see --help for more info. To use tab completion make sure you 
             have global completion activated. See argcomplete docs for more information: 
             https://kislyuk.github.io/argcomplete/
         '''),
@@ -84,9 +120,9 @@ def set_verbosity(verbose):
 def main():
     parser = create_parser()
     args = vars(parser.parse_args())
-    set_verbosity(args.pop('verbose'))
 
     try:
+        set_verbosity(args.pop('verbose'))
         cmd = args.pop('cmd')
         optionals = args.pop('optionals')
     except KeyError:

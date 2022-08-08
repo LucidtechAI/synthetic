@@ -269,11 +269,11 @@ def parse_pdf(
     pdf_file: Path,
     json_file: Path,
     synthesizer_class: Type[PdfSynthesizer],
-    max_fonts: int,
-    max_pages: int,
     num_outputs_per_document: int,
     dst_dir: Path,
-    tmp_dir: Path
+    tmp_dir: Path,
+    max_fonts: int = None,
+    max_pages: int = None,
 ):
     logger.info(f'{name}: {pdf_file} {json_file}')
     status = f'Error when synthesizing {name}'
