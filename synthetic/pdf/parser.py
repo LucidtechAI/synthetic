@@ -246,14 +246,14 @@ def synthesize_pdf(
 
     with pikepdf.Pdf.open(pdf_file) as pdf:
         new_contents = collections.defaultdict(list)
-        new_ground_truths = []
+        new_ground_truths = {}
 
         for i in k_to_process:
             for page_number, page in enumerate(pdf.pages):
                 new_content_stream = parse_text(page, font_map, synthesizer)
                 new_contents[i].append(pdf.make_stream(pikepdf.unparse_content_stream(new_content_stream)))
 
-            new_ground_truths.append(synthesizer.create_new_ground_truth())
+            new_ground_truths[i] = synthesizer.create_new_ground_truth()
             synthesizer.reset()
 
         for i in k_to_process:
