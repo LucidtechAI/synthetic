@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.3.8 - 2022-08-08
+
+- Bugfix: mismatch between ground truth and document on subsequent runs targeting the same directory
+
 ## Version 0.3.5 - 2022-06-27
 
 - Now catching additional exceptions that might occur when synthesizing PDFs.
