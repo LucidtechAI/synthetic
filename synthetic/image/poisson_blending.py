@@ -15,12 +15,8 @@ from sklearn.cluster import KMeans
 def prepare_mask(mask):
     if type(mask[0][0]) is np.ndarray:
         result = np.ndarray((mask.shape[0], mask.shape[1]), dtype=np.uint8)
-        for i in range(mask.shape[0]):
-            for j in range(mask.shape[1]):
-                if sum(mask[i][j]) > 0:
-                    result[i][j] = 1
-                else:
-                    result[i][j] = 0
+        for i, j in itertools.product(range(mask.shape[0]), range(mask.shape[1])):
+            result[i][j] = 1 if sum(mask[i][j]) > 0 else 0
         mask = result
     return mask
 
@@ -28,64 +24,62 @@ def prepare_mask(mask):
 # the below poisson blending function is courtesy of
 # https://github.com/parosky/poissonblending/blob/master/poissonblending.py
 def blend(image_target, image_source, image_mask, offset=(0, 0)):
-    region_source = (
-        max(-offset[0], 0),
-        max(-offset[1], 0),
-        min(image_target.shape[0] - offset[0], image_source.shape[0]),
-        min(image_target.shape[1] - offset[1], image_source.shape[1]),
-    )
-    region_target = (
-        max(offset[0], 0),
-        max(offset[1], 0),
-        min(image_target.shape[0], image_source.shape[0] + offset[0]),
-        min(image_target.shape[1], image_source.shape[1] + offset[1]),
-    )
+    offset_x, offset_y = offset
+
+    region_source_xmin = max(-offset_x, 0)
+    region_source_ymin = max(-offset_y, 0)
+    region_source_xmax = min(image_target.shape[0] - offset_x, image_source.shape[0])
+    region_source_ymax = min(image_target.shape[1] - offset_y, image_source.shape[1])
+
+    region_target_xmin = max(offset_x, 0)
+    region_target_ymin = max(offset_y, 0)
+    region_target_xmax = min(image_target.shape[0], image_source.shape[0] + offset_x)
+    region_target_ymax = min(image_target.shape[1], image_source.shape[1] + offset_y)
+
     region_size = (
-        region_source[2] - region_source[0],
-        region_source[3] - region_source[1],
+        region_source_xmax - region_source_xmin,
+        region_source_ymax - region_source_ymin,
     )
 
-    image_mask = image_mask[region_source[0]:region_source[2], region_source[1]:region_source[3]]
+    image_mask = image_mask[region_source_xmin:region_source_xmax, region_source_ymin:region_source_ymax]
     image_mask = prepare_mask(image_mask)
     image_mask[image_mask == 0] = False
     image_mask[image_mask != False] = True
 
     A = scipy.sparse.identity(np.prod(region_size), format='lil')
-    for y in range(region_size[0]):
-        for x in range(region_size[1]):
-            if image_mask[y, x]:
-                index = x + y * region_size[1]
-                A[index, index] = 4
-                if index+1 < np.prod(region_size):
-                    A[index, index + 1] = -1
-                if index-1 >= 0:
-                    A[index, index - 1] = -1
-                if index+region_size[1] < np.prod(region_size):
-                    A[index, index + region_size[1]] = -1
-                if index-region_size[1] >= 0:
-                    A[index, index - region_size[1]] = -1
+    for y, x in itertools.product(range(region_size[0]), range(region_size[1])):
+        if image_mask[y, x]:
+            index = x + y * region_size[1]
+            A[index, index] = 4
+            if index + 1 < np.prod(region_size):
+                A[index, index + 1] = -1
+            if index - 1 >= 0:
+                A[index, index - 1] = -1
+            if index+region_size[1] < np.prod(region_size):
+                A[index, index + region_size[1]] = -1
+            if index-region_size[1] >= 0:
+                A[index, index - region_size[1]] = -1
     A = A.tocsr()
     P = pyamg.gallery.poisson(image_mask.shape)
 
     for num_layer in range(image_target.shape[2]):
-        t = image_target[region_target[0]:region_target[2], region_target[1]:region_target[3], num_layer]
-        s = image_source[region_source[0]:region_source[2], region_source[1]:region_source[3], num_layer]
+        t = image_target[region_target_xmin:region_target_xmax, region_target_ymin:region_target_ymax, num_layer]
+        s = image_source[region_source_xmin:region_source_xmax, region_source_ymin:region_source_ymax, num_layer]
         t = t.flatten()
         s = s.flatten()
 
         b = P * s
-        for y in range(region_size[0]):
-            for x in range(region_size[1]):
-                index = x + y * region_size[1]
-                if not image_mask[y, x]:
-                    b[index] = t[index]
+        for y, x in itertools.product(range(region_size[0]), range(region_size[1])):
+            index = x + y * region_size[1]
+            if not image_mask[y, x]:
+                b[index] = t[index]
 
         x = pyamg.solve(A, b, verb=False, tol=1E-10)
         x = np.reshape(x, region_size)
         x[x > 255] = 255
         x[x < 0] = 0
         x = np.array(x, image_target.dtype)
-        image_target[region_target[0]:region_target[2], region_target[1]:region_target[3], num_layer] = x
+        image_target[region_target_xmin:region_target_xmax, region_target_ymin:region_target_ymax, num_layer] = x
 
     return image_target
 
@@ -99,15 +93,15 @@ def get_bg_fg_cols(image_array):
     kmeans = KMeans(n_clusters=2).fit(image_array.reshape(-1, image_array.shape[-1]))
     colors = kmeans.cluster_centers_[:2]
 
-    bdy_pixels = np.vstack([
+    boundary_pixels = np.vstack([
         image_array[:, 0, :],
         image_array[:, -1, :],
         image_array[0, :, :],
         image_array[-1, :, :],
     ])
     colors = [np.array(list(map(int, c))) for c in [colors[0], colors[1]]]
-    colorarrs = [np.tile(c[np.newaxis, :], (bdy_pixels.shape[0], 1)) for c in colors]
-    colordevs = [np.mean(np.abs(colorarr - bdy_pixels)) for colorarr in colorarrs]
+    colorarrs = [np.tile(c[np.newaxis, :], (boundary_pixels.shape[0], 1)) for c in colors]
+    colordevs = [np.mean(np.abs(colorarr - boundary_pixels)) for colorarr in colorarrs]
     if colordevs[0] > colordevs[1]:
         colors = colors[::-1]
 
@@ -115,6 +109,10 @@ def get_bg_fg_cols(image_array):
 
 
 def text_to_image(text, image_size, fonts_by_size, bg_color, fg_color, angle):
+    """
+        Calculate which font and size we want to use. Loop over all fonts/sizes that fits the region and pick the size
+        corresponding to the middle point between the smallest and largest font size that fits.
+    """
     testimage = Image.new(mode='RGB', size=image_size, color=bg_color)
     draw = ImageDraw.Draw(testimage)
 
@@ -135,10 +133,10 @@ def text_to_image(text, image_size, fonts_by_size, bg_color, fg_color, angle):
 
     fontsize = (min(valid_sizes) + max(valid_sizes)) // 2
     font = fonts_by_size[fontsize]
-    tx, ty = draw.textsize(text=text, font=font)
-    xm, ym = [int(s / 2) for s in testimage.size]
-    x0, y0 = xm - tx / 2, ym - ty / 2
-    draw.text((x0, y0), text, font=font, fill=fg_color)
+    xtext, ytext = draw.textsize(text=text, font=font)
+    xmean, ymean = [int(s / 2) for s in testimage.size]
+    xmin, ymin = xmean - xtext / 2, ymean - ytext / 2
+    draw.text((xmin, ymin), text, font=font, fill=fg_color)
     return testimage.rotate(angle, fillcolor=bg_color)
 
 
@@ -149,20 +147,20 @@ def add_text_to_image(text, image_array, bounding_box, angle, fonts_by_size):
     bdy_ratio = 0.005
     bdy_ratio_x, bdy_ratio_y = bdy_ratio * sqrt(dy / dx), bdy_ratio * sqrt(dx / dy)
     bx, by = max(int(dx * bdy_ratio_x), 1), max(int(dy * bdy_ratio_y), 1)
-    xmb, ymb = [r - 2 * b for r, b in [(xmin, bx), (ymin, by)]]
-    xMb, yMb = [r + 2 * b for r, b in [(xmax, bx), (ymax, by)]]
-    xmb, xMb = [clip(v, 1, image_array.shape[1] - 1) for v in [xmb, xMb]]
-    ymb, yMb = [clip(v, 1, image_array.shape[0] - 1) for v in [ymb, yMb]]
+    xmin_b, ymin_b = [r - 2 * b for r, b in [(xmin, bx), (ymin, by)]]
+    xmax_b, ymax_b = [r + 2 * b for r, b in [(xmax, bx), (ymax, by)]]
+    xmin_b, xmax_b = [clip(v, 1, image_array.shape[1] - 1) for v in [xmin_b, xmax_b]]
+    ymin_b, ymax_b = [clip(v, 1, image_array.shape[0] - 1) for v in [ymin_b, ymax_b]]
 
-    image_mask = np.zeros((yMb - ymb, xMb - xmb), dtype=np.uint8)
+    image_mask = np.zeros((ymax_b - ymin_b, xmax_b - xmin_b), dtype=np.uint8)
     image_mask[by:-by, bx:-bx] = 1
 
-    image_target = np.array(image_array[ymb:yMb, xmb:xMb, :])
+    image_target = np.array(image_array[ymin_b:ymax_b, xmin_b:xmax_b, :])
     bg_color, fg_color = get_bg_fg_cols(image_target)
     image_source = text_to_image(text, image_target.shape[:2][::-1], fonts_by_size, bg_color, fg_color, angle)
     image_ret = blend(image_target, np.asarray(image_source), image_mask)
 
-    image_array[ymb:yMb, xmb:xMb, :] = image_ret
+    image_array[ymin_b:ymax_b, xmin_b:xmax_b, :] = image_ret
     return image_array
 
 
@@ -170,9 +168,9 @@ def adjust_box(edginess, bounding_box):
     r = 0.1
     xmin, ymin, xmax, ymax = bounding_box
     dx, dy = int(xmax - xmin), int(ymax - ymin)
-    dx, dy = int(r * sqrt(dy * dx)), int(r * sqrt(dy * dx))
-    dx, dy = max(dx, 5), max(dy, 5)
-    dxh, dyh = int(dx / 3), int(dy / 3)
+    dxy = int(r * sqrt(dy * dx))
+    dxy = max(dxy, 5)
+    dxh = dyh = int(dxy / 3)
 
     min_val = 1E20
     best_bounding_box = None
@@ -183,13 +181,13 @@ def adjust_box(edginess, bounding_box):
         range(xmax - dxh, xmax + dx + 1),
         range(ymax - dxh, ymax + dy + 1),
     ):
-        xm, ym, xM, yM = possible_box
-        e1 = edginess[ym - D:yM + D + 1, xm - D:xM + D + 1]
-        e2 = edginess[ym + D:yM - D + 1, xm + D:xM - D + 1]
+        xmin_b, ymin_b, xmax_b, ymax_b = possible_box
+        e1 = edginess[ymin_b - D:ymax_b + D + 1, xmin_b - D:xmax_b + D + 1]
+        e2 = edginess[ymin_b + D:ymax_b - D + 1, xmin_b + D:xmax_b - D + 1]
         E = np.sum(e1) - np.sum(e2)
         if E < min_val:
             min_val = E
-            best_bounding_box = xm, ym, xM, yM
+            best_bounding_box = xmin_b, ymin_b, xmax_b, ymax_b
 
     return best_bounding_box
 
@@ -212,9 +210,9 @@ def blend_image(image: Image, bounding_boxes: list, fonts: dict, max_size: int):
         return blend_image(resized_image, bounding_boxes, fonts, max_size).resize(image.size)
 
     bounding_boxes = [(rel_to_abs(bounding_box, image.size), text) for bounding_box, text in bounding_boxes]
-    image_bw_arr = np.asarray(image.convert('L'))
-    scale = np.sqrt(image_bw_arr.size) / 900
-    edginess = feature.canny(image_bw_arr, sigma=scale)
+    image_binary_arr = np.asarray(image.convert('L'))
+    scale = np.sqrt(image_binary_arr.size) / 900
+    edginess = feature.canny(image_binary_arr, sigma=scale)
     adjusted_boxes = [(adjust_box(edginess, bounding_box), text) for bounding_box, text in bounding_boxes]
 
     image_array = np.asarray(image)
