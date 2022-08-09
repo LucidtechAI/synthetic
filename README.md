@@ -1,4 +1,4 @@
-# PDF anonymizer/synthesizer for Cradl
+# Image/PDF synthesizer for Cradl
 
 ![Github Actions build status](https://github.com/LucidtechAI/synthetic/actions/workflows/pipeline.yaml/badge.svg)
 ![Python version](https://img.shields.io/pypi/pyversions/lucidtech-synthetic?logo=Python)
@@ -8,7 +8,7 @@
 
 ## Disclaimer
 
-This code does not guarantee that PDFs will be successfully anonymized/synthesized. Use at your own risk.
+This code does not guarantee that images/PDFs will be successfully synthesized. Use at your own risk.
 
 ## Installation
 
@@ -31,36 +31,40 @@ We recommend disabling networking and setting `/path/to/src_dir` to read-only as
 
 ```bash
 docker run --network none -v /path/to/src_dir:/root/src_dir:ro -v /path/to/dst_dir:/root/dst_dir -it lucidtechai/synthetic pdf /root/src_dir /root/dst_dir
+docker run --network none -v /path/to/src_dir:/root/src_dir:ro -v /path/to/dst_dir:/root/dst_dir -it lucidtechai/synthetic image /root/src_dir /root/dst_dir /usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf 6-36
 ```
 
 ### CLI
 
 ```bash
 synthetic pdf /path/to/src_dir /path/to/dst_dir
+synthetic image /path/to/src_dir /path/to/dst_dir /usr/share/fonts/ubuntu/Ubuntu-B.ttf 6-36
 ```
 
-`/path/to/src_dir` is the input directory and should contain your PDFs and JSON ground truths
-`/path/to/dst_dir` is the output directory where synthesized PDFs and JSON ground truths will be written to
+`/path/to/src_dir` is the input directory and should contain your image/PDFs and JSON ground truths
+`/path/to/dst_dir` is the output directory where synthesized image/PDFs and JSON ground truths will be written to
 
 Here is an example of the directory layout for `/path/to/src_dir`:
 ```
 /path/to/src_dir
-├── a.pdf
+├── a.pdf|jpeg
 ├── a.json
-├── b.pdf
+├── b.pdf|jpeg
 └── b.json
 ```
 
-The output directory will follow the same layout but with modified PDFs and JSON ground truths:
+The output directory will follow the same layout but with modified images/PDFs and JSON ground truths:
 ```
 /path/to/dst_dir
-├── a.pdf
+├── a.pdf|jpeg
 ├── a.json
-├── b.pdf
+├── b.pdf|jpeg
 └── b.json
 ```
 
 ## Using a custom Synthesizer
+
+The following examples shown are for custom PDF synthesizers, but it works similarly for image synthesizers
 
 ### CLI
 
@@ -106,8 +110,13 @@ $ synthetic --help
 
 ## Known Issues
 
+### Image Synthesizer
+
+- Synthesized text does not follow the rotation of the document in the image if document is rotated
+- Bounding boxes needed in ground truth
+
 ### PDF Synthesizer
 
-- Does not synthesize images
+- Does not synthesize images inside PDF
 - Replaced strings are sometimes not hexadecimal encoded even when expected to be
 - Text appearing as single characters with custom spacing in PDF will often yield poor results

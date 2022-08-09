@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.4.0 - 2022-08-05
+
+- Added image synthesizing. To use image synthesizing you need to also provide bounding boxes in the ground truth JSON for each label.
+
 ## Version 0.3.8 - 2022-08-08
 
 - Bugfix: mismatch between ground truth and document on subsequent runs targeting the same directory
