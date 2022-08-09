@@ -55,9 +55,9 @@ def blend(image_target, image_source, image_mask, offset=(0, 0)):
                 A[index, index + 1] = -1
             if index - 1 >= 0:
                 A[index, index - 1] = -1
-            if index+region_size[1] < np.prod(region_size):
+            if index + region_size[1] < np.prod(region_size):
                 A[index, index + region_size[1]] = -1
-            if index-region_size[1] >= 0:
+            if index - region_size[1] >= 0:
                 A[index, index - region_size[1]] = -1
     A = A.tocsr()
     P = pyamg.gallery.poisson(image_mask.shape)
