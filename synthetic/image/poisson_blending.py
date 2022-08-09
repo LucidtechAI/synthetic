@@ -172,6 +172,9 @@ def add_text_to_image(text, image_array, bounding_box, angle, fonts_by_size):
 
 
 def adjust_box(edginess, bounding_box):
+"""
+Find the best bounding box by minimizing the difference in edges on the boundary
+"""
     r = 0.1
     xmin, ymin, xmax, ymax = bounding_box
     dx, dy = int(xmax - xmin), int(ymax - ymin)
