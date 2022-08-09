@@ -89,9 +89,9 @@ def clip(value, min_value, max_value):
 
 
 # TODO: sort colors by how close they are to the mean boundary image color, and say the closest is bg
-def get_bg_fg_cols(image_array):
+def calculate_background_and_foreground_colors(image_array):
     kmeans = KMeans(n_clusters=2).fit(image_array.reshape(-1, image_array.shape[-1]))
-    colors = kmeans.cluster_centers_[:2]
+    colors = kmeans.cluster_centers_[:2].astype(int)
 
     boundary_pixels = np.vstack([
         image_array[:, 0, :],
@@ -99,7 +99,6 @@ def get_bg_fg_cols(image_array):
         image_array[0, :, :],
         image_array[-1, :, :],
     ])
-    colors = [np.array(list(map(int, c))) for c in [colors[0], colors[1]]]
     colorarrs = [np.tile(c[np.newaxis, :], (boundary_pixels.shape[0], 1)) for c in colors]
     colordevs = [np.mean(np.abs(colorarr - boundary_pixels)) for colorarr in colorarrs]
     if colordevs[0] > colordevs[1]:
@@ -108,13 +107,14 @@ def get_bg_fg_cols(image_array):
     return map(tuple, colors)
 
 
-def text_to_image(text, image_size, fonts_by_size, bg_color, fg_color, angle):
+def create_text_image(text, image_size, fonts_by_size, background_color, foreground_color, angle):
     """
         Calculate which font and size we want to use. Loop over all fonts/sizes that fits the region and pick the size
-        corresponding to the middle point between the smallest and largest font size that fits.
+        corresponding to the middle point between the smallest and largest font size that fits. Return an image with
+        text rendered.
     """
-    testimage = Image.new(mode='RGB', size=image_size, color=bg_color)
-    draw = ImageDraw.Draw(testimage)
+    text_image = Image.new(mode='RGB', size=image_size, color=background_color)
+    draw = ImageDraw.Draw(text_image)
 
     c = 1.5
     valid_sizes = []
@@ -134,19 +134,19 @@ def text_to_image(text, image_size, fonts_by_size, bg_color, fg_color, angle):
     fontsize = (min(valid_sizes) + max(valid_sizes)) // 2
     font = fonts_by_size[fontsize]
     xtext, ytext = draw.textsize(text=text, font=font)
-    xmean, ymean = [int(s / 2) for s in testimage.size]
+    xmean, ymean = [int(s / 2) for s in text_image.size]
     xmin, ymin = xmean - xtext / 2, ymean - ytext / 2
-    draw.text((xmin, ymin), text, font=font, fill=fg_color)
-    return testimage.rotate(angle, fillcolor=bg_color)
+    draw.text((xmin, ymin), text, font=font, fill=foreground_color)
+    return text_image.rotate(angle, fillcolor=background_color)
 
 
 def add_text_to_image(text, image_array, bounding_box, angle, fonts_by_size):
     image_array = np.array(image_array)
     xmin, ymin, xmax, ymax = bounding_box
     dx, dy = xmax - xmin, ymax - ymin
-    bdy_ratio = 0.005
-    bdy_ratio_x, bdy_ratio_y = bdy_ratio * sqrt(dy / dx), bdy_ratio * sqrt(dx / dy)
-    bx, by = max(int(dx * bdy_ratio_x), 1), max(int(dy * bdy_ratio_y), 1)
+    boundary_ratio = 0.005
+    boundary_ratio_x, boundary_ratio_y = boundary_ratio * sqrt(dy / dx), boundary_ratio * sqrt(dx / dy)
+    bx, by = max(int(dx * boundary_ratio_x), 1), max(int(dy * boundary_ratio_y), 1)
     xmin_b, ymin_b = [r - 2 * b for r, b in [(xmin, bx), (ymin, by)]]
     xmax_b, ymax_b = [r + 2 * b for r, b in [(xmax, bx), (ymax, by)]]
     xmin_b, xmax_b = [clip(v, 1, image_array.shape[1] - 1) for v in [xmin_b, xmax_b]]
@@ -156,8 +156,15 @@ def add_text_to_image(text, image_array, bounding_box, angle, fonts_by_size):
     image_mask[by:-by, bx:-bx] = 1
 
     image_target = np.array(image_array[ymin_b:ymax_b, xmin_b:xmax_b, :])
-    bg_color, fg_color = get_bg_fg_cols(image_target)
-    image_source = text_to_image(text, image_target.shape[:2][::-1], fonts_by_size, bg_color, fg_color, angle)
+    background_color, foreground_color = calculate_background_and_foreground_colors(image_target)
+    image_source = create_text_image(
+        text=text,
+        image_size=(xmax_b - xmin_b, ymax_b - ymin_b),
+        fonts_by_size=fonts_by_size,
+        background_color=background_color,
+        foreground_color=foreground_color,
+        angle=angle,
+    )
     image_ret = blend(image_target, np.asarray(image_source), image_mask)
 
     image_array[ymin_b:ymax_b, xmin_b:xmax_b, :] = image_ret
@@ -168,8 +175,8 @@ def adjust_box(edginess, bounding_box):
     r = 0.1
     xmin, ymin, xmax, ymax = bounding_box
     dx, dy = int(xmax - xmin), int(ymax - ymin)
-    dxy = int(r * sqrt(dy * dx))
-    dxy = max(dxy, 5)
+    dxy = max(int(r * sqrt(dy * dx)), 5)
+    dx = dy = dxy
     dxh = dyh = int(dxy / 3)
 
     min_val = 1E20
