@@ -1,8 +1,9 @@
 import abc
+from typing import List
 
 
 class Synthesizer:
-    def __init__(self, ground_truth: list[dict]):
+    def __init__(self, ground_truth: List[dict]):
         self.ground_truth = ground_truth
 
     @abc.abstractmethod
