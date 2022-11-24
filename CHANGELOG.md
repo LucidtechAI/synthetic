@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.4.1 - 2022-11-24
+
+- Using typing library in `synthetic/core/synthesizer.py`
+- Fixed indentation of docstring in `synthetic/image/poisson_blending.py`
+
 ## Version 0.4.0 - 2022-08-05
 
 - Added image synthesizing. To use image synthesizing you need to also provide bounding boxes in the ground truth JSON for each label.
