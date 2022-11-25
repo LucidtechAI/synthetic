@@ -7,7 +7,7 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
 from pathlib import Path
-from typing import Callable, Type
+from typing import Callable, Type, List
 
 import filetype
 from filetype.types import Type as FileType
@@ -61,7 +61,7 @@ def iter_documents(src_dir, accepted_document_types):
 def parse_documents(
     src_dir: Path,
     dst_dir: Path,
-    accepted_document_types: list[FileType],
+    accepted_document_types: List[FileType],
     synthesizer_class: Type[Synthesizer],
     parse_fn: Callable[[str, Path, Path, Type[Synthesizer], Path, Path], str],
     num_outputs_per_document: int,

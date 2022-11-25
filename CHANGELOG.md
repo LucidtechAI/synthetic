@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.4.2 - 2022-11-25
+
+- Additional usage of typing library
+
 ## Version 0.4.1 - 2022-11-24
 
 - Using typing library in `synthetic/core/synthesizer.py`
