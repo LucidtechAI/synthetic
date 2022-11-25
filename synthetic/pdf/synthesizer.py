@@ -4,6 +4,7 @@ import random
 import string
 from functools import reduce
 from itertools import chain, combinations
+from typing import Dict, List
 
 from ..core.ground_truth import parse_labels_in_ground_truth
 from ..core.synthesizer import Synthesizer
@@ -11,7 +12,7 @@ from .utils import Font
 
 
 class PdfSynthesizer(Synthesizer):
-    def __init__(self, ground_truth: list[dict], font_map: dict[str, Font]):
+    def __init__(self, ground_truth: List[dict], font_map: Dict[str, Font]):
         super().__init__(ground_truth)
         self.font_map = font_map
 
@@ -25,7 +26,7 @@ class PdfSynthesizer(Synthesizer):
 
 
 class BasicSynthesizer(PdfSynthesizer):
-    def __init__(self, ground_truth: list[dict], font_map: dict[str, Font]):
+    def __init__(self, ground_truth: List[dict], font_map: Dict[str, Font]):
         super().__init__(ground_truth, font_map)
         self.substitutions = self._create_substitution_map()
 

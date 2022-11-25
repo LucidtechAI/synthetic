@@ -1,11 +1,12 @@
 import abc
 import random
+from typing import List
 
 from ..core.synthesizer import Synthesizer
 
 
 class ImageSynthesizer(Synthesizer):
-    def __init__(self, ground_truth: list[dict]):
+    def __init__(self, ground_truth: List[dict]):
         super().__init__(ground_truth)
 
     @abc.abstractmethod
@@ -18,7 +19,7 @@ class ImageSynthesizer(Synthesizer):
 
 
 class BasicSynthesizer(Synthesizer):
-    def __init__(self, ground_truth: list[dict]):
+    def __init__(self, ground_truth: List[dict]):
         super().__init__(ground_truth)
 
     @abc.abstractmethod
