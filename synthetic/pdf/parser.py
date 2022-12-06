@@ -4,6 +4,7 @@ import logging
 import re
 import string
 import subprocess
+import sys
 from functools import partial
 from io import BytesIO, StringIO
 from pathlib import Path
@@ -21,6 +22,27 @@ from .utils import Font
 
 
 logger = logging.getLogger(__name__)
+
+if sys.platform != 'win32':
+    import signal
+
+    def handler(*_):
+        raise TimeoutError()
+
+    def timeout(func, args=None, kwargs=None, timeout_in_seconds=1):
+        signal.signal(signal.SIGALRM, handler)
+        signal.alarm(timeout_in_seconds)
+        try:
+            result = func(*(args or ()), **(kwargs or {}))
+        except TimeoutError:
+            raise
+        finally:
+            signal.alarm(0)
+
+        return result
+else:
+    def timeout(func, args=None, kwargs=None, timeout_in_seconds=1):
+        return func(*(args or ()), **(kwargs or {}))
 
 
 class TextBlock:
@@ -274,6 +296,7 @@ def parse_pdf(
     tmp_dir: Path,
     max_fonts: int = None,
     max_pages: int = None,
+    timeout_in_seconds: int = 5,
 ):
     logger.info(f'{name}: {pdf_file} {json_file}')
     status = f'Error when synthesizing {name}'
@@ -288,7 +311,7 @@ def parse_pdf(
     )
 
     try:
-        synthesize_fn(pdf_file)
+        timeout(synthesize_fn, args=(pdf_file,), timeout_in_seconds=timeout_in_seconds)
         status = f'Successfully synthesized {name}'
     except HasFormException:
         logger.info('Has form! Trying to flatten PDF')
@@ -299,13 +322,15 @@ def parse_pdf(
             except HasFormException:
                 logger.error('Failed to get rid of forms in flattened PDF')
             except Exception as e:
-                logger.error(e)
+                logger.exception(e)
             finally:
                 flattened_pdf_file.unlink()
     except AlreadyProcessed as e:
         logger.warning(e)
     except (FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException, TooManySingleChars) as e:
         logger.error(e)
+    except TimeoutError:
+        logger.error(f'Synthesizing timed out, took longer than {timeout_in_seconds}s')
     except Exception as e:
         logger.exception(e)
         link = 'https://github.com/LucidtechAI/synthetic/issues'
