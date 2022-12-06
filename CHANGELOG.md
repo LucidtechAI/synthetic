@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.4.3 - 2022-11-29
+
+- Added timeout to PDF synthesizing
+
 ## Version 0.4.2 - 2022-11-25
 
 - Additional usage of typing library
