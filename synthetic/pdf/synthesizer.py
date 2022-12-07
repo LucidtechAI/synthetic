@@ -49,7 +49,7 @@ class BasicSynthesizer(PdfSynthesizer):
         return ''.join(self.substitutions.get(c, c) for c in text)
 
     def _create_substitution_map(self):
-        available_character_sets = [set(font.available_characters()) for font in self.font_map.values()]
+        available_character_sets = [font.available_characters for font in self.font_map.values()]
         substitution_character_sets = [set(string.digits), set(string.ascii_lowercase), set(string.ascii_uppercase)]
 
         if len(substitution_character_sets) > 1:
