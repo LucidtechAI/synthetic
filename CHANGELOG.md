@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 0.4.5 - 2022-12-07
+
+- Basic Synthesizer: Do not synthesize zeros since prefixed and suffixed zeros are often stripped in amounts. E.g. 
+`2340.00` might be synthesized to `0432.22` which should've been written `432.22` but we can't detect this. Another 
+example would be if the value in ground truth is `2340.00` and in the PDF it is written as `2340`. If we synthesize
+to `0432.22` in the ground truth, we'll have the incorrect amount of `0432` in the PDF.
+
 ## Version 0.4.4 - 2022-12-07
 
 - Do not trust font character mappings in PDF, instead scan PDF for all printed characters when determining which 
