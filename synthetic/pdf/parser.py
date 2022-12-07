@@ -185,11 +185,9 @@ def has_form(qpdf_page, operands):
     return False
 
 
-def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
+def _parse_pdf_objects(qpdf_page: pikepdf.Page, font_map, new_content_stream):
     content_stream = iter(pikepdf.parse_content_stream(qpdf_page))
-    new_content_stream = []
     last_used_font = None
-    text_lengths = collections.Counter()
 
     for operands, operator in content_stream:
         if operator == pikepdf.Operator('Do'):
@@ -206,17 +204,34 @@ def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
                 content_stream=content_stream,
                 current_font=last_used_font,
             )
+
             for text_id, text, font in text_block:
-                text_lengths[len(text)] += 1
-                modified_text = synthesizer.modify_text(text, font=font)
-                text_block.set_unicode_text(text_id, modified_text)
+                yield text_block, text_id, text, font
             new_content_stream.extend(text_block.content_stream)
         else:
             new_content_stream.append((operands, operator))
 
+    return new_content_stream
+
+
+def update_available_characters(qpdf_page: pikepdf.Page, font_map):
+    text_lengths = collections.Counter()
+
+    for _, text_id, text, font in _parse_pdf_objects(qpdf_page, font_map, []):
+        font.available_characters |= set(text)
+        text_lengths[len(text)] += 1
+
     single_chars = text_lengths[1] / sum(text_lengths.values())
     if single_chars > 0.9:
         raise TooManySingleChars(f'Too many single characters in document ({single_chars * 100:.2f}%)')
+
+
+def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
+    new_content_stream = []
+
+    for text_block, text_id, text, font in _parse_pdf_objects(qpdf_page, font_map, new_content_stream):
+        modified_text = synthesizer.modify_text(text, font=font)
+        text_block.set_unicode_text(text_id, modified_text)
 
     return new_content_stream
 
@@ -264,11 +279,15 @@ def synthesize_pdf(
         raise NoTextException('PDF does not have any text! Skipping')
 
     font_map = {f'/{k}': Font(f'/{k}', v) for k, v in interpreter_fonts.items()}
-    synthesizer = synthesizer_class(ground_truth, font_map)
 
     with pikepdf.Pdf.open(pdf_file) as pdf:
         new_contents = collections.defaultdict(list)
         new_ground_truths = {}
+
+        for page in pdf.pages:
+            update_available_characters(page, font_map)
+
+        synthesizer = synthesizer_class(ground_truth, font_map)
 
         for i in k_to_process:
             for page_number, page in enumerate(pdf.pages):
@@ -323,6 +342,7 @@ def parse_pdf(
                 logger.error('Failed to get rid of forms in flattened PDF')
             except Exception as e:
                 logger.exception(e)
+                logger.error(f'Error when synthesizing {name}')
             finally:
                 flattened_pdf_file.unlink()
     except AlreadyProcessed as e:

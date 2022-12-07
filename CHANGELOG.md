@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.4.4 - 2022-12-07
+
+- Do not trust font character mappings in PDF, instead scan PDF for all printed characters when determining which 
+characters are available for synthesizing
+
 ## Version 0.4.3 - 2022-11-29
 
 - Added timeout to PDF synthesizing

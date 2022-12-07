@@ -6,6 +6,7 @@ class Font:
         self.name = name
         self.pdffont: PDFFont = pdffont
         self.unicode_to_cid = self._create_revers_lookup()
+        self.available_characters = set()
 
     def encode(self, text: str) -> bytes:
         _bytes = b''
@@ -19,9 +20,6 @@ class Font:
         for cid in self.pdffont.decode(_bytes):
             _unicode += self.pdffont.to_unichr(cid)
         return _unicode
-
-    def available_characters(self):
-        return list(self.unicode_to_cid.keys())
 
     def _create_revers_lookup(self):
         reverse_lookup = {}
