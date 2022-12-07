@@ -27,7 +27,8 @@ class Font:
         if cid_to_unicode := getattr(self.pdffont, 'cid2unicode', None):
             for k, v in cid_to_unicode.items():
                 reverse_lookup[v] = k
-        elif unicode_map := getattr(self.pdffont, 'unicode_map'):
+
+        if unicode_map := getattr(self.pdffont, 'unicode_map'):
             for k, v in unicode_map.cid2unichr.items():
                 reverse_lookup[v] = k
 
