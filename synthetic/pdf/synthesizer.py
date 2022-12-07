@@ -50,7 +50,12 @@ class BasicSynthesizer(PdfSynthesizer):
 
     def _create_substitution_map(self):
         available_character_sets = [font.available_characters for font in self.font_map.values()]
-        substitution_character_sets = [set(string.digits), set(string.ascii_lowercase), set(string.ascii_uppercase)]
+        substitution_character_sets = [
+            # Since prefixed and suffixed zeros are often stripped in amounts, we avoid synthesizing those
+            set(string.digits.replace('0', '')),
+            set(string.ascii_lowercase),
+            set(string.ascii_uppercase),
+        ]
 
         if len(substitution_character_sets) > 1:
             assert all([a.isdisjoint(b) for a, b in combinations(substitution_character_sets, 2)])
