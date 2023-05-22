@@ -344,7 +344,7 @@ def parse_pdf(
                 logger.exception(e)
                 logger.error(f'Error when synthesizing {name}')
             finally:
-                flattened_pdf_file.unlink()
+                flattened_pdf_file.unlink(missing_ok=True)
     except AlreadyProcessed as e:
         logger.warning(e)
     except (FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException, TooManySingleChars) as e:
