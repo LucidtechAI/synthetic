@@ -62,7 +62,7 @@ def create_pdf_parser(subparsers):
         default=5,
     )
     cmd = partial(parse_documents, accepted_document_types=[Pdf], parse_fn=parse_pdf)
-    pdf_parser.set_defaults(optionals=['max_fonts', 'max_pages'])
+    pdf_parser.set_defaults(optionals=['max_fonts', 'max_pages', 'timeout_in_seconds'])
     pdf_parser.set_defaults(cmd=cmd)
 
 
