@@ -55,6 +55,12 @@ def create_pdf_parser(subparsers):
         )
     )
     pdf_parser.add_argument('--synthesizer-class', type=load_class, default=BasicPdfSynthesizer)
+    pdf_parser.add_argument(
+        '--timeout-in-seconds',
+        type=int,
+        help='Time to wait for a single pdf to be parsed',
+        default=5,
+    )
     cmd = partial(parse_documents, accepted_document_types=[Pdf], parse_fn=parse_pdf)
     pdf_parser.set_defaults(optionals=['max_fonts', 'max_pages'])
     pdf_parser.set_defaults(cmd=cmd)
