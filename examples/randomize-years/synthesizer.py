@@ -9,6 +9,7 @@ from synthetic.pdf.synthesizer import PdfSynthesizer
 from synthetic.pdf.utils import Font
 
 
+# Courtesy of https://gist.github.com/bgusach/a967e0587d6e01e889fd1d776c5f3729
 def multireplace(string, replacements):
     """
     Given a string and a replacement map, it returns the replaced string.
