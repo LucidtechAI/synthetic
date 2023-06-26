@@ -1,3 +1,4 @@
+import logging
 import copy
 import json
 import pathlib
@@ -9,10 +10,10 @@ from synthetic.pdf.synthesizer import BasicSynthesizer
 WORDS_FILE = pathlib.Path(__file__).parent / 'words.json'
 IGNORE_CASE_IN_EXCLUDED_WORDS = True
 
-
 def _fix_case(word):
     return word.upper() if IGNORE_CASE_IN_EXCLUDED_WORDS else word
 
+logging.getLogger().setLevel(logging.INFO)
 
 class ExcludeWordsSynthesizer(BasicSynthesizer):
     """
@@ -38,6 +39,14 @@ class ExcludeWordsSynthesizer(BasicSynthesizer):
         for word in text.split(self.WORDS_DELIM):
             if _fix_case(word) in self.EXCLUDED_WORDS:
                 words.append(word)
+            elif any([w in _fix_case(word) for w in self.EXCLUDED_WORDS]):
+                new_word = ''
+                for letter in word:
+                    if letter in self.EXCLUDED_WORDS:
+                        new_word += letter
+                    else:
+                        new_word += self.substitute(letter)
+                words.append(new_word)
             else:
                 words.append(self.substitute(word))
         return self.WORDS_DELIM.join(words)

@@ -222,7 +222,7 @@ def update_available_characters(qpdf_page: pikepdf.Page, font_map):
         text_lengths[len(text)] += 1
 
     single_chars = text_lengths[1] / sum(text_lengths.values())
-    if single_chars > 0.9:
+    if single_chars > 0.99:
         raise TooManySingleChars(f'Too many single characters in document ({single_chars * 100:.2f}%)')
 
 
