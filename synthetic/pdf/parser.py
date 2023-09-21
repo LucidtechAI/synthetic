@@ -7,6 +7,7 @@ import subprocess
 import sys
 from functools import partial
 from io import BytesIO, StringIO
+from os import getpid
 from pathlib import Path
 from typing import Type
 from uuid import uuid4
@@ -21,6 +22,7 @@ from .synthesizer import PdfSynthesizer
 from .utils import Font
 
 
+DEFAULT_TIMEOUT = 30
 logger = logging.getLogger(__name__)
 
 if sys.platform != 'win32':
@@ -159,19 +161,11 @@ class NoTextException(Exception):
     pass
 
 
-class AlreadyProcessed(Exception):
-    pass
-
-
 class TooManyFontsException(Exception):
     pass
 
 
 class TooManyPagesException(Exception):
-    pass
-
-
-class TooManySingleChars(Exception):
     pass
 
 
@@ -205,8 +199,7 @@ def _parse_pdf_objects(qpdf_page: pikepdf.Page, font_map, new_content_stream):
                 current_font=last_used_font,
             )
 
-            for text_id, text, font in text_block:
-                yield text_block, text_id, text, font
+            yield text_block
             new_content_stream.extend(text_block.content_stream)
         else:
             new_content_stream.append((operands, operator))
@@ -215,25 +208,49 @@ def _parse_pdf_objects(qpdf_page: pikepdf.Page, font_map, new_content_stream):
 
 
 def update_available_characters(qpdf_page: pikepdf.Page, font_map):
-    text_lengths = collections.Counter()
+    for text_block in _parse_pdf_objects(qpdf_page, font_map, []):
+        for text_id, text, font in text_block:
+            font.available_characters |= set(text)
 
-    for _, text_id, text, font in _parse_pdf_objects(qpdf_page, font_map, []):
-        font.available_characters |= set(text)
-        text_lengths[len(text)] += 1
 
-    single_chars = text_lengths[1] / sum(text_lengths.values())
-    if single_chars > 0.9:
-        raise TooManySingleChars(f'Too many single characters in document ({single_chars * 100:.2f}%)')
+def split(s, template):
+    pos = 0
+    for c in template:
+        yield s[pos:pos + len(c)]
+        pos += len(c)
 
 
 def parse_text(qpdf_page: pikepdf.Page, font_map, synthesizer: PdfSynthesizer):
     new_content_stream = []
 
-    for text_block, text_id, text, font in _parse_pdf_objects(qpdf_page, font_map, new_content_stream):
-        modified_text = synthesizer.modify_text(text, font=font)
-        text_block.set_unicode_text(text_id, modified_text)
+    for text_block in _parse_pdf_objects(qpdf_page, font_map, new_content_stream):
+        texts = []
+        text_ids = []
+        for text_id, text, font in text_block:
+            texts.append(text)
+            text_ids.append(text_id)
+
+        modified_text = synthesizer.modify_text(''.join(texts))
+
+        for (text_id, text, font), new_text in zip(text_block, split(modified_text, texts)):
+            text_block.set_unicode_text(text_id, new_text)
 
     return new_content_stream
+
+
+def out_path(_i, suffix, dst_dir, file_stem):
+    return dst_dir / f'{file_stem}-{_i}{suffix}'
+
+
+def calculate_k_to_process(num_outputs_per_document, dst_dir, file_stem):
+    k_to_process = []
+    for i in range(num_outputs_per_document):
+        if not (
+            out_path(i, '.pdf', dst_dir, file_stem).exists() and
+            out_path(i, '.json', dst_dir, file_stem).exists()
+        ):
+            k_to_process.append(i)
+    return k_to_process
 
 
 def synthesize_pdf(
@@ -242,8 +259,8 @@ def synthesize_pdf(
     dst_dir,
     max_fonts,
     max_pages,
-    num_outputs_per_document,
     synthesizer_class,
+    k_to_process,
 ):
     ground_truth = json.loads(json_file.read_text())
     pdf_io = BytesIO(pdf_file.read_bytes())
@@ -253,16 +270,7 @@ def synthesize_pdf(
     interpreter = PDFPageInterpreter(rsrcmgr, device)
     interpreter_fonts = {}
 
-    def _out_path(_i, suffix):
-        return dst_dir / f'{json_file.stem}-{_i}{suffix}'
-
-    k_to_process = []
-    for i in range(num_outputs_per_document):
-        if not (_out_path(i, '.pdf').exists() and _out_path(i, '.json').exists()):
-            k_to_process.append(i)
-
-    if not k_to_process:
-        raise AlreadyProcessed(f'Already processed {pdf_file} {json_file}')
+    _out_path = partial(out_path, dst_dir=dst_dir, file_stem=json_file.stem)
 
     with pikepdf.Pdf.open(pdf_file) as pdf:
         if max_pages and len(pdf.pages) > max_pages:
@@ -315,28 +323,37 @@ def parse_pdf(
     tmp_dir: Path,
     max_fonts: int = None,
     max_pages: int = None,
-    timeout_in_seconds: int = 5,
+    timeout_in_seconds: int = DEFAULT_TIMEOUT,
+    autofix_pdf: bool = False,
 ):
     logger.info(f'{name}: {pdf_file} {json_file}')
     status = f'Error when synthesizing {name}'
+
+    k_to_process = calculate_k_to_process(num_outputs_per_document, dst_dir, json_file.stem)
+    if not k_to_process:
+        return f'Already processed {pdf_file} {json_file}'
+
     synthesize_fn = partial(
         synthesize_pdf,
         json_file=json_file,
         dst_dir=dst_dir,
         max_fonts=max_fonts,
         max_pages=max_pages,
-        num_outputs_per_document=num_outputs_per_document,
         synthesizer_class=synthesizer_class,
+        k_to_process=k_to_process,
     )
 
     try:
-        timeout(synthesize_fn, args=(pdf_file,), timeout_in_seconds=timeout_in_seconds)
+        if autofix_pdf and (rewritten_pdf_file := rewrite_pdf(pdf_file, tmp_dir, timeout_in_seconds)):
+            timeout(synthesize_fn, args=(rewritten_pdf_file,), timeout_in_seconds=timeout_in_seconds)
+        else:
+            timeout(synthesize_fn, args=(pdf_file,), timeout_in_seconds=timeout_in_seconds)
         status = f'Successfully synthesized {name}'
     except HasFormException:
         logger.info('Has form! Trying to flatten PDF')
-        if flattened_pdf_file := flatten(pdf_file, tmp_dir):
+        if flattened_pdf_file := flatten(pdf_file, tmp_dir, timeout_in_seconds):
             try:
-                synthesize_fn(flattened_pdf_file)
+                timeout(synthesize_fn, args=(flattened_pdf_file,), timeout_in_seconds=timeout_in_seconds)
                 status = f'Successfully synthesized {name}'
             except HasFormException:
                 logger.error('Failed to get rid of forms in flattened PDF')
@@ -345,9 +362,7 @@ def parse_pdf(
                 logger.error(f'Error when synthesizing {name}')
             finally:
                 flattened_pdf_file.unlink(missing_ok=True)
-    except AlreadyProcessed as e:
-        logger.warning(e)
-    except (FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException, TooManySingleChars) as e:
+    except (FileNotFoundError, NoTextException, TooManyFontsException, TooManyPagesException) as e:
         logger.error(e)
     except TimeoutError:
         logger.error(f'Synthesizing timed out, took longer than {timeout_in_seconds}s')
@@ -359,10 +374,25 @@ def parse_pdf(
     return status
 
 
-def flatten(pdf_file, tmp_dir):
+def run_in_shell(cmd, timeout_in_seconds):
+    return subprocess.run(cmd, shell=True, timeout=timeout_in_seconds)
+
+
+def flatten(pdf_file, tmp_dir, timeout_in_seconds):
     try:
         dst_path = tmp_dir / f'{pdf_file.stem}.flattened.pdf'
-        subprocess.run(f'gs -q -sDEVICE=pdfwrite -o {dst_path} {pdf_file}', shell=True, timeout=15)
+        run_in_shell(f'gs -q -sDEVICE=pdfwrite -o {dst_path} {pdf_file}', timeout_in_seconds)
         return dst_path
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        logger.error(e)
+
+
+def rewrite_pdf(pdf_file, tmp_dir, timeout_in_seconds):
+    try:
+        dst = tmp_dir / f'{pdf_file.stem}.pdf'
+        env = f'-env:UserInstallation=file:///tmp/{getpid()}'
+        src = f'--convert-to pdf {pdf_file}'
+        run_in_shell(f'libreoffice {env} --headless {src} --outdir {tmp_dir}', timeout_in_seconds)
+        return dst
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
         logger.error(e)
