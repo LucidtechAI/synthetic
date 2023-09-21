@@ -1,7 +1,8 @@
 FROM python:3.10
 
 RUN apt-get update && apt install -y --no-install-recommends \
-    ghostscript
+    ghostscript \
+    libreoffice
 
 WORKDIR /root/synthetic/
 COPY . .

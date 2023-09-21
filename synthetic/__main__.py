@@ -15,7 +15,7 @@ from .__version__ import __version__
 from .image.parser import parse_image
 from .image.synthesizer import BasicSynthesizer as BasicImageSynthesizer
 from .iterdata import parse_documents
-from .pdf.parser import parse_pdf
+from .pdf.parser import parse_pdf, DEFAULT_TIMEOUT
 from .pdf.synthesizer import BasicSynthesizer as BasicPdfSynthesizer
 
 
@@ -59,10 +59,15 @@ def create_pdf_parser(subparsers):
         '--timeout-in-seconds',
         type=int,
         help='Time to wait for a single pdf to be parsed',
-        default=5,
+        default=DEFAULT_TIMEOUT,
+    )
+    pdf_parser.add_argument(
+        '--autofix-pdf',
+        help='Fix potentially bad PDFs. Requires libreoffice to be installed, will be ignored otherwise',
+        action='store_true',
     )
     cmd = partial(parse_documents, accepted_document_types=[Pdf], parse_fn=parse_pdf)
-    pdf_parser.set_defaults(optionals=['max_fonts', 'max_pages', 'timeout_in_seconds'])
+    pdf_parser.set_defaults(optionals=['max_fonts', 'max_pages', 'timeout_in_seconds', 'autofix_pdf'])
     pdf_parser.set_defaults(cmd=cmd)
 
 

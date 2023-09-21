@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.6.0 - 2023-09-21
+
+- Added an option to PDF synthesizing that attempts to correct incomplete and/or bad PDFs before synthesizing. This
+will result in more PDFs being synthesized and more of the PDFs' text being synthesized. The option requires you to
+have libreoffice installed. If using the docker image, libreoffice comes pre-installed.
+
 ## Version 0.4.5 - 2022-12-07
 
 - Basic Synthesizer: Do not synthesize zeros since prefixed and suffixed zeros are often stripped in amounts. E.g. 

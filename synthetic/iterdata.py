@@ -91,4 +91,4 @@ def parse_documents(
             futures.append(executor.submit(_parse_fn, *args))
 
         for future in as_completed(futures):
-            logger.info(future.result())
+            print(future.result())
