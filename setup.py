@@ -30,6 +30,7 @@ setup(
     packages=[
         'synthetic',
         'synthetic.core',
+        'synthetic.image',
         'synthetic.pdf',
     ],
     entry_points={
