@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 0.6.1 - 2023-09-28
+
+- Bugfix: Added image submodule to setup.py
+
 ## Version 0.6.0 - 2023-09-21
 
 - Added an option to PDF synthesizing that attempts to correct incomplete and/or bad PDFs before synthesizing. This
