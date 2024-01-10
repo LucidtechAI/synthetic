@@ -29,6 +29,9 @@ class BasicSynthesizer(PdfSynthesizer):
     def __init__(self, ground_truth: List[dict], font_map: Dict[str, Font]):
         super().__init__(ground_truth, font_map)
         self.substitutions = self._create_substitution_map()
+        self._static_character_map = {
+            'c': '\u00e7',
+        }
 
     def modify_text(self, text: str, **kwargs):
         return self.substitute(text)
@@ -46,7 +49,13 @@ class BasicSynthesizer(PdfSynthesizer):
         return ground_truth
 
     def substitute(self, text):
-        return ''.join(self.substitutions.get(c, c) for c in text)
+        new_characters = []
+        for c in text:
+            if c_new := self._static_character_map.get(c):
+                new_characters.append(c_new)
+            else:
+                new_characters.append(self.substitutions.get(c, c))
+        return ''.join(new_characters)
 
     def _create_substitution_map(self):
         available_character_sets = [font.available_characters for font in self.font_map.values()]
